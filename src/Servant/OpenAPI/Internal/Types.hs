@@ -60,6 +60,9 @@ module Servant.OpenAPI.Internal.Types
 
     -- * Schema object
   , SchemaObject(..)
+  , SchemaType(..)
+  , Properties(..)
+  , SchemaOrReference(..)
   ) where
 
 import           Control.Lens.Type (Lens')
