@@ -665,34 +665,10 @@ data OathFlowsObject = OauthFlowsObject
   }
   deriving stock (Generic)
 
--- FIXME
-data ImplicitOauthFlowObject
-  deriving stock (Generic)
-
--- FIXME
-data PasswordOauthFlowObject
-  deriving stock (Generic)
-
--- FIXME
-data ClientCredentialsOauthFlowObject
-  deriving stock (Generic)
-
--- FIXME
-data AuthorizationCodeOauthFlowObject
-  deriving stock (Generic)
-
--- FIXME
-data LinkObject
-  deriving stock (Generic)
-
--- FIXME
-data CallbackObject
-  deriving stock (Generic)
-
 data SchemaObject = SchemaObject
   { title :: Maybe Text
     -- ^ The name of the schema
-  , type_ :: Text
+  , type_ :: SchemaType
     -- ^ Value MUST be a string. Multiple types via an array are not supported.
   , multipleOf :: Maybe Int
     -- ^ When @type@ is integer, this defines valid values as a multiple
@@ -772,6 +748,16 @@ data SchemaObject = SchemaObject
   }
   deriving stock (Generic)
 
+data SchemaType
+  = Number
+  | Integer
+  | String
+  | Object
+  | Array
+  | Boolean
+  | Null
+  deriving stock (Generic)
+
 newtype Properties = Properties { unProperties :: Map Text SchemaOrReference }
   deriving stock (Generic)
 
@@ -780,11 +766,92 @@ data SchemaOrReference
   | PropertySchemaObject SchemaObject
   deriving stock (Generic)
 
--- FIXME
-data MediaTypeObject
+data MediaTypeObject = MediaTypeObject
+  { schema :: Maybe SchemaOrReference
+    -- ^ The schema defining the content of the request, response, or
+    --   parameter.
+  , example :: Maybe Aeson.Value
+    -- ^ Example of the media type. The example object SHOULD be in the correct
+    --   format as specified by the media type. The example field is mutually
+    --   exclusive of the examples field. Furthermore, if referencing a schema
+    --   which contains an example, the example value SHALL override the example
+    --   provided by the schema.
+  , examples :: [ReferenceOr ExampleObject]
+    -- ^ Examples of the media type. Each example object SHOULD match the media
+    --   type and specified schema if present. The examples field is mutually
+    --   exclusive of the example field. Furthermore, if referencing a schema
+    --   which contains an example, the examples value SHALL override the example
+    --   provided by the schema.
+  , encoding :: Maybe (Map Text EncodingObject)
+    -- ^ A map between a property name and its encoding information. The key,
+    --   being the property name, MUST exist in the schema as a property. The
+    --   encoding object SHALL only apply to requestBody objects when the media
+    --   type is multipart or application/x-www-form-urlencoded.
+  }
+  deriving stock (Generic)
+
+-- | A single encoding definition applied to a single schema property
+data EncodingObject = EncodingObject
+  { contentType :: Maybe Text
+    -- ^ The Content-Type for encoding a specific property. Default value
+    --   depends on the property type: for string with format being binary –
+    --   application/octet-stream; for other primitive types – text/plain; for
+    --   object - application/json; for array – the default is defined based on
+    --   the inner type. The value can be a specific media type (e.g.
+    --   application/json), a wildcard media type (e.g. image/*), or a
+    --   comma-separated list of the two types.
+  , headers :: Map Text (ReferenceOr HeaderObject)
+    -- ^ A map allowing additional information to be provided as headers, for
+    --   example Content-Disposition. Content-Type is described separately and
+    --   SHALL be ignored in this section. This property SHALL be ignored if
+    --   the request body media type is not a multipart.
+  , style :: Maybe Text
+    -- ^ Describes how a specific property value will be serialized depending
+    --   on its type. See Parameter Object for details on the style property. The
+    --   behavior follows the same values as query parameters, including default
+    --   values. This property SHALL be ignored if the request body media type is
+    --   not application/x-www-form-urlencoded.
+  , explode :: Maybe Bool
+    -- ^ When this is true, property values of type array or object generate
+    --   separate parameters for each value of the array, or key-value-pair of
+    --   the map. For other types of properties this property has no effect. When
+    --   style is form, the default value is true. For all other styles, the
+    --   default value is false. This property SHALL be ignored if the request
+    --   body media type is not application/x-www-form-urlencoded.
+  , allowReserved :: Maybe Bool
+    -- ^ Determines whether the parameter value SHOULD allow reserved
+    --   characters, as defined by RFC3986 :/?#[]@!$&'()*+,;= to be included
+    --   without percent-encoding. The default value is false. This property
+    --   SHALL be ignored if the request body media type is not
+    --   application/x-www-form-urlencoded.
+  }
   deriving stock (Generic)
 
 -- FIXME
 data ResponsesObject
+  deriving stock (Generic)
+
+-- FIXME
+data ImplicitOauthFlowObject
+  deriving stock (Generic)
+
+-- FIXME
+data PasswordOauthFlowObject
+  deriving stock (Generic)
+
+-- FIXME
+data ClientCredentialsOauthFlowObject
+  deriving stock (Generic)
+
+-- FIXME
+data AuthorizationCodeOauthFlowObject
+  deriving stock (Generic)
+
+-- FIXME
+data LinkObject
+  deriving stock (Generic)
+
+-- FIXME
+data CallbackObject
   deriving stock (Generic)
 
