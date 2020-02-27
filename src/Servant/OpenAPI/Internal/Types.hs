@@ -57,6 +57,9 @@ module Servant.OpenAPI.Internal.Types
   , contactName
   , contactUrl
   , contactEmail
+
+    -- * Schema object
+  , SchemaObject(..)
   ) where
 
 import           Control.Lens.Type (Lens')
