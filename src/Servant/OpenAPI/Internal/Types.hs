@@ -866,20 +866,37 @@ data ResponsesObject = ResponsesObject
   }
   deriving stock (Generic)
 
--- FIXME
-data ImplicitOauthFlowObject
+-- | Configuration details for a supported OAuth Flow
+data ImplicitOauthFlowObject = ImplicitOauthFlowObject
+  { authorizationUrl :: Text
+  , refreshUrl :: Maybe Text
+  , scopes :: Map Text Text
+  }
   deriving stock (Generic)
 
--- FIXME
-data PasswordOauthFlowObject
+-- | Configuration details for a supported OAuth Flow
+data PasswordOauthFlowObject = PasswordOauthFlowObject
+  { tokenUrl :: Text
+  , refreshUrl :: Maybe Text
+  , scopes :: Map Text Text
+  }
   deriving stock (Generic)
 
--- FIXME
-data ClientCredentialsOauthFlowObject
+-- | Configuration details for a supported OAuth Flow
+data ClientCredentialsOauthFlowObject = ClientCredentialsOauthFlowObject
+  { tokenUrl :: Text
+  , refreshUrl :: Maybe Text
+  , scopes :: Map Text Text
+  }
   deriving stock (Generic)
 
--- FIXME
-data AuthorizationCodeOauthFlowObject
+-- | Configuration details for a supported OAuth Flow
+data AuthorizationCodeOauthFlowObject = AuthorizationCodeOauthFlowObject
+  { authorizationUrl :: Text
+  , tokenUrl :: Text
+  , refreshUrl :: Maybe Text
+  , scopes :: Map Text Text
+  }
   deriving stock (Generic)
 
 -- FIXME
