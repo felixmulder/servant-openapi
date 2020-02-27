@@ -691,26 +691,46 @@ data CallbackObject
 
 data SchemaObject = SchemaObject
   { title :: Maybe Text
+    -- ^ The name of the schema
   , type_ :: Text
     -- ^ Value MUST be a string. Multiple types via an array are not supported.
   , multipleOf :: Maybe Int
-    -- ^ When @type@ is integer
+    -- ^ When @type@ is integer, this defines valid values as a multiple
   , maximum :: Maybe Int
+    -- ^ When @type@ is integer, this defines the maximum value allowed
   , exclusiveMaximum :: Maybe Int
+    -- ^ When @type@ is integer, this defines the non-inclusive maximum value
+    --   allowed. E.g. @exclusiveMaximum: 3@ largest value allowed is @2@
   , minimum :: Maybe Int
+    -- ^ When @type@ is integer, this defines the minimum value allowed
   , exclusiveMinimum :: Maybe Int
+    -- ^ When @type@ is integer, this defines the non-inclusive minimum value
+    --   allowed. E.g. @exclusiveMinimum: 3@ smallest value allowed is @4@
   , maxLength :: Maybe Int
+    -- ^ When @type@ is string, this defines the maximum length of the string
   , minLength :: Maybe Int
+    -- ^ When @type@ is string, this defines the minimum length of the string
   , pattern :: Maybe Text
     -- ^ This string SHOULD be a valid regular expression, according to the
     --   Ecma-262 Edition 5.1 regular expression dialect)
   , maxItems :: Maybe Int
+    -- ^ When @type@ is array, this defines the maximum length of the array
   , minItems :: Maybe Int
-  , uniqueItems :: Maybe Int
+    -- ^ When @type@ is array, this defines the minimum length of the array
+  , uniqueItems :: Maybe Bool
+    -- ^ When @type@ is array, this defines if duplicates are disallowed,
+    --   defaults to @False@
   , maxProperties :: Maybe Int
+    -- ^ When @type@ is object, this defines the max of how many properties are
+    --   allowed
   , minProperties :: Maybe Int
+    -- ^ When @type@ is object, this defines the min of how many properties are
+    --   allowed
   , required :: Maybe [Text]
+    -- ^ When @type@ is object, this defines which properties are required
   , enum :: Maybe [Text]
+    -- ^ When @type@ is string, this defines the possible values the string may
+    --   take
   , allOf :: Maybe [Either ReferenceObject SchemaObject]
     -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
   , oneOf :: Maybe [Either ReferenceObject SchemaObject]
@@ -720,7 +740,9 @@ data SchemaObject = SchemaObject
   , not :: Maybe [Either ReferenceObject SchemaObject]
     -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
   , items :: Maybe (Either ReferenceObject SchemaObject)
-    -- ^ Value MUST be an object and not an array. Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema. items MUST be present if the type is array.
+    -- ^ Value MUST be an object and not an array. Inline or referenced schema
+    --   MUST be of a Schema Object and not a standard JSON Schema. items MUST be
+    --   present if the type is array.
   , properties :: Maybe (Map Text (Either ReferenceObject SchemaObject))
     -- ^ Property definitions MUST be a Schema Object and not a standard JSON Schema (inline or referenced).
   , additionalProperties :: Maybe (Either Bool (Either SchemaObject ReferenceObject))
