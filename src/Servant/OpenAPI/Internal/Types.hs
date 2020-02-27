@@ -689,8 +689,65 @@ data LinkObject
 data CallbackObject
   deriving stock (Generic)
 
--- FIXME
-data SchemaObject
+data SchemaObject = SchemaObject
+  { title :: Maybe Text
+  , type_ :: Text
+    -- ^ Value MUST be a string. Multiple types via an array are not supported.
+  , multipleOf :: Maybe Int
+    -- ^ When @type@ is integer
+  , maximum :: Maybe Int
+  , exclusiveMaximum :: Maybe Int
+  , minimum :: Maybe Int
+  , exclusiveMinimum :: Maybe Int
+  , maxLength :: Maybe Int
+  , minLength :: Maybe Int
+  , pattern :: Maybe Text
+    -- ^ This string SHOULD be a valid regular expression, according to the
+    --   Ecma-262 Edition 5.1 regular expression dialect)
+  , maxItems :: Maybe Int
+  , minItems :: Maybe Int
+  , uniqueItems :: Maybe Int
+  , maxProperties :: Maybe Int
+  , minProperties :: Maybe Int
+  , required :: Maybe [Text]
+  , enum :: Maybe [Text]
+  , allOf :: Maybe [Either ReferenceObject SchemaObject]
+    -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
+  , oneOf :: Maybe [Either ReferenceObject SchemaObject]
+    -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
+  , anyOf :: Maybe [Either ReferenceObject SchemaObject]
+    -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
+  , not :: Maybe [Either ReferenceObject SchemaObject]
+    -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
+  , items :: Maybe (Either ReferenceObject SchemaObject)
+    -- ^ Value MUST be an object and not an array. Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema. items MUST be present if the type is array.
+  , properties :: Maybe (Map Text (Either ReferenceObject SchemaObject))
+    -- ^ Property definitions MUST be a Schema Object and not a standard JSON Schema (inline or referenced).
+  , additionalProperties :: Maybe (Either Bool (Either SchemaObject ReferenceObject))
+    -- ^ When @type_ == "object" 'additionalProperties' can be set to:
+    --
+    --    - Bool
+    --    - Object
+    --    - Schema
+    --
+    --   If @additionalProperties == True || additionalProperties == {}@, keys of object may have any type.
+    --
+    --   If it's a schema, or schema reference, all values in the map are of that type.
+    --
+    --   /Note:/ additionalProperties defaults to true.
+  , description :: Maybe Text
+    -- ^ CommonMark syntax MAY be used for rich text representation.
+  , format :: Maybe Text
+    -- ^ See Data Type Formats for further details. While relying on JSON
+    --   Schema's defined formats, the OAS offers a few additional predefined
+    --   formats.
+  , default_ :: Maybe Aeson.Value
+    -- ^ The default value represents what would be assumed by the consumer of
+    --   the input as the value of the schema if one is not provided. Unlike JSON
+    --   Schema, the value MUST conform to the defined type for the Schema Object
+    --   defined at the same level. For example, if type is string, then default
+    --   can be "foo" but cannot be 1.
+  }
   deriving stock (Generic)
 
 -- FIXME
