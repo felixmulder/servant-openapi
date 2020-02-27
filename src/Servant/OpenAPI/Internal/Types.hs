@@ -907,6 +907,67 @@ data AuthorizationCodeOauthFlowObject = AuthorizationCodeOauthFlowObject
 newtype CallbackObject = CallbackObject (Map Text PathItemObject)
   deriving stock (Generic)
 
--- FIXME
-data LinkObject
+-- | The Link object represents a possible design-time link for a response. The
+--   presence of a link does not guarantee the caller's ability to successfully
+--   invoke it, rather it provides a known relationship and traversal mechanism
+--   between responses and other operations.
+--
+--   Unlike dynamic links (i.e. links provided in the response payload), the OAS
+--   linking mechanism does not require link information in the runtime response.
+--
+--   For computing links, and providing instructions to execute them, a runtime
+--   expression is used for accessing values in an operation and using them as
+--   parameters while invoking the linked operation.
+data LinkObject = LinkObject
+  { operationRef :: Maybe Text
+    -- ^ A relative or absolute URI reference to an OAS operation. This field
+    --   is mutually exclusive of the operationId field, and MUST point to an
+    --   Operation Object. Relative operationRef values MAY be used to locate an
+    --   existing Operation Object in the OpenAPI definition.
+  , operationId :: Maybe Text
+    -- ^ The name of an existing, resolvable OAS operation, as defined with a
+    --   unique operationId. This field is mutually exclusive of the operationRef
+    --   field.
+  , parameters :: Maybe (Map String (Either Aeson.Value Expression))
+    -- ^ A map representing parameters to pass to an operation as specified
+    --   with operationId or identified via operationRef. The key is the
+    --   parameter name to be used, whereas the value can be a constant or an
+    --   expression to be evaluated and passed to the linked operation. The
+    --   parameter name can be qualified using the parameter location
+    --   [{in}.]{name} for operations that use the same parameter name in
+    --   different locations (e.g. path.id).
+  , requestBody :: Maybe (Either Aeson.Value Expression)
+    -- ^ A literal value or {expression} to use as a request body when calling
+    --   the target operation.
+  , description :: Maybe Text
+    -- ^ A description of the link. CommonMark syntax MAY be used for rich text
+    --   representation.
+  , server :: Maybe ServerObject
+    -- ^ A server object to be used by the target operation.
+  }
+  deriving stock (Generic)
+
+-- | Runtime expressions allow defining values based on information that will
+--   only be available within the HTTP message in an actual API call. This
+--   mechanism is used by Link Objects and Callback Objects.
+--
+-- @
+--   expression = ( "$url" / "$method" / "$statusCode" / "$request." source / "$response." source )
+--   source = ( header-reference / query-reference / path-reference / body-reference )
+--   header-reference = "header." token
+--   query-reference = "query." name
+--   path-reference = "path." name
+--   body-reference = "body" ["#" json-pointer ]
+--   json-pointer    = *( "/" reference-token )
+--   reference-token = *( unescaped / escaped )
+--   unescaped       = %x00-2E / %x30-7D / %x7F-10FFFF
+--      ; %x2F ('/') and %x7E ('~') are excluded from 'unescaped'
+--   escaped         = "~" ( "0" / "1" )
+--     ; representing '~' and '/', respectively
+--   name = *( CHAR )
+--   token = 1*tchar
+--   tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
+--     "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
+-- @
+newtype Expression = Expression Text
   deriving stock (Generic)
