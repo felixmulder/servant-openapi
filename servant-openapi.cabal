@@ -37,6 +37,8 @@ library
     DataKinds
     DeriveGeneric
     DerivingStrategies
+    DuplicateRecordFields
+    EmptyDataDeriving
     FlexibleContexts
     FlexibleInstances
     GADTs

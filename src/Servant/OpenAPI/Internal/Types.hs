@@ -104,7 +104,7 @@ data OpenAPI = OpenAPI
   , externalDocs :: Maybe ExternalDocumentationObject
     -- ^ Additional external documentation
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 apiInfo :: Lens' OpenAPI InfoObject
 apiInfo = #info
@@ -144,7 +144,7 @@ data InfoObject = InfoObject
     -- ^ The version of the OpenAPI document (which is distinct from the
     --   OpenAPI Specification version or the API implementation version)
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 infoTitle :: Lens' InfoObject Text
 infoTitle = #title
@@ -177,7 +177,7 @@ data ServerObject = ServerObject
     -- ^ A map between a variable name and its value. The value is used for
     --   substitution in the server's URL template.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 serverUrl :: Lens' ServerObject Text
 serverUrl = #url
@@ -199,7 +199,7 @@ data ServerVariableObject = ServerVariableObject
     -- ^ An optional description for the server variable. CommonMark syntax MAY
     --   be used for rich text representation.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data TagObject = TagObject
   { name :: Text
@@ -210,7 +210,7 @@ data TagObject = TagObject
   , externalDocs :: Maybe ExternalDocumentationObject
     -- ^ Additional external documentation for this tag
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 tagName :: Lens' TagObject Text
 tagName = #name
@@ -229,7 +229,7 @@ data ExternalDocumentationObject = ExternalDocumentationObject
     -- ^ The URL for the target documentation. Value MUST be in the format of a
     --   URL
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 externalDocsUrl :: Lens' ExternalDocumentationObject Text
 externalDocsUrl = #url
@@ -243,7 +243,7 @@ data LicenseObject = LicenseObject
   , url :: Maybe Text
     -- ^ A URL to the license used for the API. MUST be in the format of a URL
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 licenseName :: Lens' LicenseObject Text
 licenseName = #name
@@ -261,7 +261,7 @@ data ContactObject = ContactObject
     -- ^ The email address of the contact person/organization. MUST be in the
     --   format of an email address
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 contactName :: Lens' ContactObject (Maybe Text)
 contactName = #name
@@ -273,7 +273,7 @@ contactEmail :: Lens' ContactObject (Maybe Text)
 contactEmail = #email
 
 data SecurityRequirementObject
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data PathPattern
   = PathVariable Text
@@ -282,7 +282,7 @@ data PathPattern
     -- ^ A subpart of the path
   | PathNil
     -- ^ End of path
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data PathItemObject = PathItemObject
   { ref :: Maybe Text
@@ -324,7 +324,7 @@ data PathItemObject = PathItemObject
     --   Object to link to parameters that are defined at the OpenAPI Object's
     --   components/parameters.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data OperationObject = OperationObject
   { tags :: Maybe [Text]
@@ -379,7 +379,7 @@ data OperationObject = OperationObject
     --   server object is specified at the Path Item Object or Root level, it will
     --   be overridden by this value.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data ComponentsObject = ComponentsObject
   { schemas :: [ReferenceOr SchemaObject]
@@ -401,16 +401,16 @@ data ComponentsObject = ComponentsObject
   , callbacks :: [ReferenceOr CallbackObject]
     -- ^ An object to hold reusable Callback Objects
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | An object containing a @$ref@ field
 data ReferenceObject = ReferenceObject { ref :: Text }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data ReferenceOr a
   = Reference Text ReferenceObject
   | Or Text a
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data ResponseObject = ResponseObject
   { description :: Text
@@ -430,7 +430,7 @@ data ResponseObject = ResponseObject
     --   key of the map is a short name for the link, following the naming
     --   constraints of the names for Component Objects.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data ParameterObject = ParameterObject
   { name :: Text
@@ -502,7 +502,7 @@ data ParameterObject = ParameterObject
   --   media type and the value describes it. The map MUST only contain one
   --   entry.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | The @in@ field as an enum
 data ParameterIn
@@ -510,7 +510,7 @@ data ParameterIn
   | Header
   | Path
   | Cookie
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data StyleValue
   = Matrix
@@ -533,7 +533,7 @@ data StyleValue
   | DeepObject
     -- ^ Provides a simple way of rendering nested objects using form
     --   parameters.
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data ExampleObject = ExampleObject
   { summary :: Maybe Text
@@ -556,7 +556,7 @@ data ExampleObject = ExampleObject
     --   be included in JSON or YAML documents. The 'value' field and
     --   'externalValue' field are mutually exclusive.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data RequestBodyObject = RequestBodyObject
   { description :: Maybe Text
@@ -571,7 +571,7 @@ data RequestBodyObject = RequestBodyObject
     -- ^ Determines if the request body is required in the request. Defaults to
     --   false
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data HeaderObject = HeaderObject
   { description :: Maybe Text
@@ -607,7 +607,7 @@ data HeaderObject = HeaderObject
   --   Furthermore, if referencing a schema that contains an example, the
   --   examples value SHALL override the example provided by the schema.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data SecuritySchemeObject = SecuritySchemeObject
   { type_ :: SecuritySchemaType
@@ -649,10 +649,11 @@ data SecuritySchemeObject = SecuritySchemeObject
     --
     --   /Note:/ Required when @type_ == "openIdConnect"@
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 newtype SecuritySchemaType = SecuritySchemaType Text
   deriving newtype (IsString)
+  deriving stock (Show)
 
 data OathFlowsObject = OauthFlowsObject
   { implicit :: Maybe ImplicitOauthFlowObject
@@ -666,7 +667,7 @@ data OathFlowsObject = OauthFlowsObject
     -- ^ Configuration for the OAuth Authorization Code flow. Previously called
     --   @accessCode@ in OpenAPI 2.0.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data SchemaObject = SchemaObject
   { title :: Maybe Text
@@ -749,7 +750,7 @@ data SchemaObject = SchemaObject
     --   defined at the same level. For example, if type is string, then default
     --   can be "foo" but cannot be 1.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data SchemaType
   = Number
@@ -759,15 +760,15 @@ data SchemaType
   | Array
   | Boolean
   | Null
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 newtype Properties = Properties { unProperties :: Map Text SchemaOrReference }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data SchemaOrReference
   = PropertyReferenceObject ReferenceObject
   | PropertySchemaObject SchemaObject
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 data MediaTypeObject = MediaTypeObject
   { schema :: Maybe SchemaOrReference
@@ -791,7 +792,7 @@ data MediaTypeObject = MediaTypeObject
     --   encoding object SHALL only apply to requestBody objects when the media
     --   type is multipart or application/x-www-form-urlencoded.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | A single encoding definition applied to a single schema property
 data EncodingObject = EncodingObject
@@ -828,7 +829,7 @@ data EncodingObject = EncodingObject
     --   SHALL be ignored if the request body media type is not
     --   application/x-www-form-urlencoded.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | A container for the expected responses of an operation. The container maps
 --   a HTTP response code to the expected response.
@@ -864,7 +865,7 @@ data ResponsesObject = ResponsesObject
     --   response is defined using an explicit code, the explicit code definition
     --   takes precedence over the range definition for that code.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | Configuration details for a supported OAuth Flow
 data ImplicitOauthFlowObject = ImplicitOauthFlowObject
@@ -872,7 +873,7 @@ data ImplicitOauthFlowObject = ImplicitOauthFlowObject
   , refreshUrl :: Maybe Text
   , scopes :: Map Text Text
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | Configuration details for a supported OAuth Flow
 data PasswordOauthFlowObject = PasswordOauthFlowObject
@@ -880,7 +881,7 @@ data PasswordOauthFlowObject = PasswordOauthFlowObject
   , refreshUrl :: Maybe Text
   , scopes :: Map Text Text
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | Configuration details for a supported OAuth Flow
 data ClientCredentialsOauthFlowObject = ClientCredentialsOauthFlowObject
@@ -888,7 +889,7 @@ data ClientCredentialsOauthFlowObject = ClientCredentialsOauthFlowObject
   , refreshUrl :: Maybe Text
   , scopes :: Map Text Text
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | Configuration details for a supported OAuth Flow
 data AuthorizationCodeOauthFlowObject = AuthorizationCodeOauthFlowObject
@@ -897,7 +898,7 @@ data AuthorizationCodeOauthFlowObject = AuthorizationCodeOauthFlowObject
   , refreshUrl :: Maybe Text
   , scopes :: Map Text Text
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | A map of possible out-of band callbacks related to the parent operation.
 --   Each value in the map is a Path Item Object that describes a set of requests
@@ -905,7 +906,7 @@ data AuthorizationCodeOauthFlowObject = AuthorizationCodeOauthFlowObject
 --   key value used to identify the path item object is an expression, evaluated
 --   at runtime, that identifies a URL to use for the callback operation.
 newtype CallbackObject = CallbackObject (Map Text PathItemObject)
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | The Link object represents a possible design-time link for a response. The
 --   presence of a link does not guarantee the caller's ability to successfully
@@ -945,7 +946,7 @@ data LinkObject = LinkObject
   , server :: Maybe ServerObject
     -- ^ A server object to be used by the target operation.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
 
 -- | Runtime expressions allow defining values based on information that will
 --   only be available within the HTTP message in an actual API call. This
@@ -970,4 +971,4 @@ data LinkObject = LinkObject
 --     "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
 -- @
 newtype Expression = Expression Text
-  deriving stock (Generic)
+  deriving stock (Generic, Show)
