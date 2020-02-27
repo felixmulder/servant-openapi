@@ -587,7 +587,7 @@ data HeaderObject = HeaderObject
     --   separate parameters for each value of the array or key-value pair of the
     --   map. For other types of parameters this property has no effect. The
     --   default value is false.
-  , schema :: Maybe (Either ReferenceObject SchemaObject)
+  , schema :: Maybe SchemaOrReference
     -- ^ The schema defining the type used for the parameter.
   , example :: Maybe Aeson.Value
     -- ^ Example of the parameter's potential value. The example SHOULD match
@@ -731,21 +731,21 @@ data SchemaObject = SchemaObject
   , enum :: Maybe [Text]
     -- ^ When @type@ is string, this defines the possible values the string may
     --   take
-  , allOf :: Maybe [Either ReferenceObject SchemaObject]
+  , allOf :: Maybe [SchemaOrReference]
     -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
-  , oneOf :: Maybe [Either ReferenceObject SchemaObject]
+  , oneOf :: Maybe [SchemaOrReference]
     -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
-  , anyOf :: Maybe [Either ReferenceObject SchemaObject]
+  , anyOf :: Maybe [SchemaOrReference]
     -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
-  , not :: Maybe [Either ReferenceObject SchemaObject]
+  , not :: Maybe [SchemaOrReference]
     -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
-  , items :: Maybe (Either ReferenceObject SchemaObject)
+  , items :: Maybe SchemaOrReference
     -- ^ Value MUST be an object and not an array. Inline or referenced schema
     --   MUST be of a Schema Object and not a standard JSON Schema. items MUST be
     --   present if the type is array.
-  , properties :: Maybe (Map Text (Either ReferenceObject SchemaObject))
+  , properties :: Maybe Properties
     -- ^ Property definitions MUST be a Schema Object and not a standard JSON Schema (inline or referenced).
-  , additionalProperties :: Maybe (Either Bool (Either SchemaObject ReferenceObject))
+  , additionalProperties :: Maybe (Either Bool SchemaOrReference)
     -- ^ When @type_ == "object" 'additionalProperties' can be set to:
     --
     --    - Bool
@@ -770,6 +770,14 @@ data SchemaObject = SchemaObject
     --   defined at the same level. For example, if type is string, then default
     --   can be "foo" but cannot be 1.
   }
+  deriving stock (Generic)
+
+newtype Properties = Properties { unProperties :: Map Text SchemaOrReference }
+  deriving stock (Generic)
+
+data SchemaOrReference
+  = PropertyReferenceObject ReferenceObject
+  | PropertySchemaObject SchemaObject
   deriving stock (Generic)
 
 -- FIXME
