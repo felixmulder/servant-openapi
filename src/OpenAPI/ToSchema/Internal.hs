@@ -35,15 +35,23 @@ instance ToOpenAPISchema Int where toSchema Proxy = (blankSchema Integer) {title
 ------------------------------- Generic class for Maps of properties -------------------------------
 
 data Requirement = Required | Optional
+  deriving (Show, Eq, Generic)
 
 class GPropertyMap (f :: Type -> Type) where
-  gToPropertyMap :: GenericSchemaOptions -> Proxy f -> Map Text SchemaObject
+  gToPropertyMap :: GenericSchemaOptions -> Proxy f -> Map Text (SchemaObject, Requirement)
 
+instance (Selector sel, ToOpenAPISchema a) => GPropertyMap (S1 sel (Rec0 (Maybe a))) where
+  gToPropertyMap GenericSchemaOptions{fieldNameModifier} Proxy =
+    Map.fromList
+      [ ( T.pack . fieldNameModifier $ selName @sel undefined
+        , (toSchema $ Proxy @a, Optional)
+        )
+      ]
 instance (Selector sel, ToOpenAPISchema a) => GPropertyMap (S1 sel (Rec0 a)) where
   gToPropertyMap GenericSchemaOptions{fieldNameModifier} Proxy =
     Map.fromList
       [ ( T.pack . fieldNameModifier $ selName @sel undefined
-        , toSchema $ Proxy @a
+        , (toSchema $ Proxy @a, Required)
         )
       ]
 
@@ -61,7 +69,9 @@ class GSchemaUnion (f :: Type -> Type) where
 instance (Constructor cons, GPropertyMap f) => GSchemaUnion (C1 cons f) where
   gSchemaCases opts Proxy = pure
     blankObjectSchema
-      {properties = Just . Properties . fmap PropertySchemaObject . gToPropertyMap opts $ Proxy @f}
+      { properties = Just . Properties . fmap (PropertySchemaObject . fst) . gToPropertyMap opts $ Proxy @f
+      , required =  Just . Map.keys . Map.filter ((==Required) . snd) . gToPropertyMap opts $ Proxy @f
+      }
 
 instance (GSchemaUnion l, GSchemaUnion r) => GSchemaUnion (l :+: r) where
   gSchemaCases opts Proxy =
@@ -111,7 +121,11 @@ data Dog = Dog
   , dogAge :: Int
   } deriving (Generic)
 
+data User = Anonymous Text | LoggedInUser Int Text
+  deriving (Generic)
+
 instance ToOpenAPISchema Dog
+instance ToOpenAPISchema User
 
 
 blankSchema :: SchemaType -> SchemaObject
