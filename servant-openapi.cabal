@@ -59,6 +59,7 @@ library
     OpenAPI.ToSchema
     OpenAPI.ToSchema.Internal
     Servant.OpenAPI
+    Servant.OpenAPI.Internal
     Servant.OpenAPI.Internal.Types
 
   build-depends:
