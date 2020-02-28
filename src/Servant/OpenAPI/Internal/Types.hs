@@ -66,12 +66,20 @@ module Servant.OpenAPI.Internal.Types
   ) where
 
 import           Control.Lens.Type (Lens')
+import           Control.Monad ((>=>))
 import qualified Data.Aeson as Aeson (Value)
+import           Data.Aeson
+import           Data.Char (toLower)
+import           Data.Functor ((<&>))
 import           Data.Generics.Labels ()
+import           Data.List.Extra (stripSuffix)
 import           Data.Map.Strict (Map)
+import           Data.Maybe (fromMaybe)
 import           Data.String (IsString)
+import qualified Data.Text as Text
 import           Data.Text (Text)
-import           GHC.Generics (Generic)
+import           GHC.Generics (Generic(..))
+
 
 data OpenAPI = OpenAPI
   { openapi :: Text
@@ -275,17 +283,35 @@ contactUrl = #url
 contactEmail :: Lens' ContactObject (Maybe Text)
 contactEmail = #email
 
-data SecurityRequirementObject
+data SecurityRequirementObject = SecurityRequirementObject -- FIXME
   deriving stock (Generic, Show)
 
-data PathPattern
+newtype PathPattern' = PathPattern' Text
+  deriving stock (Generic, Show, Eq, Ord)
+  deriving newtype (IsString, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
+
+newtype PathPattern = PathPattern [PathPatternPiece]
+  deriving stock (Generic, Show, Eq, Ord)
+
+instance FromJSON PathPattern where
+  parseJSON = withText "String" $ pure . pathPatternFromText
+
+pathPatternFromText :: Text -> PathPattern
+pathPatternFromText path = PathPattern $ (Text.splitOn "/" path) <&> \pathPiece ->
+  maybe (PathPart pathPiece) PathVariable $
+    Text.stripPrefix "{" >=> Text.stripSuffix "}" $ pathPiece
+
+
+instance FromJSONKey PathPattern where
+  fromJSONKey = FromJSONKeyText pathPatternFromText
+
+
+data PathPatternPiece
   = PathVariable Text
     -- ^ A variable in the path
   | PathPart Text
     -- ^ A subpart of the path
-  | PathNil
-    -- ^ End of path
-  deriving stock (Generic, Show)
+  deriving stock (Generic, Show, Eq, Ord)
 
 data PathItemObject = PathItemObject
   { ref :: Maybe Text
@@ -318,7 +344,7 @@ data PathItemObject = PathItemObject
     -- ^ A definition of a TRACE operation on this path
   , servers :: Maybe [ServerObject]
     -- ^ An alternative server array to service all operations in this path.
-  , parameters :: [Either ParameterObject ReferenceObject]
+  , parameters :: Maybe [ReferenceOr ParameterObject]
     -- ^ A list of parameters that are applicable for all the operations
     --   described under this path. These parameters can be overridden at the
     --   operation level, but cannot be removed there. The list MUST NOT
@@ -346,14 +372,14 @@ data OperationObject = OperationObject
     --   case-sensitive. Tools and libraries MAY use the operationId to uniquely
     --   identify an operation, therefore, it is RECOMMENDED to follow common
     --   programming naming conventions.
-  , parameters :: Maybe [Either ParameterObject ReferenceObject]
+  , parameters :: Maybe [ReferenceOr ParameterObject]
     -- ^ A list of parameters that are applicable for this operation. If a
     --   parameter is already defined at the Path Item, the new definition will
     --   override it but can never remove it. The list MUST NOT include duplicated
     --   parameters. A unique parameter is defined by a combination of a name and
     --   location. The list can use the Reference Object to link to parameters that
     --   are defined at the OpenAPI Object's components/parameters.
-  , requestBody :: Maybe (Either ReferenceObject RequestBodyObject)
+  , requestBody :: Maybe (ReferenceOr RequestBodyObject)
     -- ^ The request body applicable for this operation. The requestBody is only
     --   supported in HTTP methods where the HTTP 1.1 specification RFC7231 has
     --   explicitly defined semantics for request bodies. In other cases where the
@@ -410,9 +436,10 @@ data ComponentsObject = ComponentsObject
 data ReferenceObject = ReferenceObject { ref :: Text }
   deriving stock (Generic, Show)
 
-data ReferenceOr a
-  = Reference Text ReferenceObject
-  | Or Text a
+data ReferenceOr a = ReferenceOr a  -- FIXME
+-- data ReferenceOr a
+--  = Reference Text ReferenceObject
+--  | Or Text a
   deriving stock (Generic, Show)
 
 data ResponseObject = ResponseObject
@@ -484,7 +511,7 @@ data ParameterObject = ParameterObject
     --   as defined by RFC3986 @:/?#[]@!$&'()*+,;=@ to be included without
     --   percent-encoding. This property only applies to parameters with an in
     --   value of query. The default value is false.
-  , schema :: Maybe (Either ReferenceObject SchemaObject)
+  , schema :: Maybe (ReferenceOr SchemaObject)
     -- ^ The schema defining the type used for the parameter.
   , example :: Maybe Aeson.Value
     -- ^ Example of the parameter's potential value. The example SHOULD match
@@ -656,7 +683,7 @@ data SecuritySchemeObject = SecuritySchemeObject
 
 newtype SecuritySchemaType = SecuritySchemaType Text
   deriving newtype (IsString)
-  deriving stock (Show)
+  deriving stock (Generic, Show)
 
 data OathFlowsObject = OauthFlowsObject
   { implicit :: Maybe ImplicitOauthFlowObject
@@ -975,3 +1002,53 @@ data LinkObject = LinkObject
 -- @
 newtype Expression = Expression Text
   deriving stock (Generic, Show)
+
+
+snakeCase :: String -> String
+snakeCase = camelTo2 '_' . stripUnderscore
+  where
+    stripUnderscore str = fromMaybe str $ stripSuffix "_" str
+
+jsonOptions :: Options
+jsonOptions = defaultOptions {fieldLabelModifier = snakeCase}
+
+-- TODO use aeson-deriving
+instance FromJSON OpenAPI where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ExternalDocumentationObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON InfoObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON TagObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ServerObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON PathItemObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ComponentsObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON SecurityRequirementObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ContactObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON LicenseObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON OperationObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ServerVariableObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ParameterObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ReferenceObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON SchemaObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ResponseObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ExampleObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON RequestBodyObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON HeaderObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON SecuritySchemeObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON LinkObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ResponsesObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON CallbackObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ParameterIn where parseJSON = genericParseJSON jsonOptions {constructorTagModifier = fmap toLower} -- FIXME be case insensitive
+instance FromJSON StyleValue where parseJSON = genericParseJSON jsonOptions
+instance FromJSON MediaTypeObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON SchemaOrReference where parseJSON = genericParseJSON jsonOptions
+instance FromJSON Properties where parseJSON = genericParseJSON jsonOptions
+instance FromJSON SecuritySchemaType where parseJSON = genericParseJSON jsonOptions
+instance FromJSON OathFlowsObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON Expression where parseJSON = genericParseJSON jsonOptions
+instance FromJSON EncodingObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON SchemaType where parseJSON = genericParseJSON jsonOptions {constructorTagModifier = fmap toLower} -- FIXME be case insensitive
+instance FromJSON ImplicitOauthFlowObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON PasswordOauthFlowObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON ClientCredentialsOauthFlowObject where parseJSON = genericParseJSON jsonOptions
+instance FromJSON AuthorizationCodeOauthFlowObject where parseJSON = genericParseJSON jsonOptions
+
+instance FromJSON a => FromJSON (ReferenceOr a) where parseJSON = fmap ReferenceOr . parseJSON
