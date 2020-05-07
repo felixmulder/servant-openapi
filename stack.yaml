@@ -5,4 +5,4 @@ packages:
 
 extra-deps:
   - git: https://github.com/fieldstrength/aeson-deriving
-    commit: 7b71906dd07ff148b05b6091239232db3cdd9dc8
+    commit: 5c420f557c46450074c8c1922c5100cbe81e2a9f
