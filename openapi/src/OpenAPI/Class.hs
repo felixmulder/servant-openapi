@@ -1,4 +1,4 @@
-module OpenAPI.ToSchema
+module OpenAPI.Class
   ( -- * Main schema class
   ToOpenAPISchema(..)
   -- * Generic schema class
@@ -11,4 +11,4 @@ module OpenAPI.ToSchema
   , genericToSchema
   ) where
 
-import OpenAPI.ToSchema.Internal
+import OpenAPI.Internal.Class

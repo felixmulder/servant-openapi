@@ -2,7 +2,7 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE OverloadedLabels #-}
 
-module OpenAPI.ToSchema.Internal where
+module OpenAPI.Internal.Class where
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
@@ -13,7 +13,7 @@ import Control.Lens hiding (enum)
 import Data.Function
 import Data.List.NonEmpty (NonEmpty)
 import Data.Coerce (coerce)
-import Servant.OpenAPI.Internal.Types
+import OpenAPI.Internal.Types
 import GHC.Generics
 import Data.Functor
 import Prelude hiding (maximum, minimum, not,)

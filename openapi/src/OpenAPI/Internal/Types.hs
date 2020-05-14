@@ -4,7 +4,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedLabels #-}
 
-module Servant.OpenAPI.Internal.Types where
+module OpenAPI.Internal.Types where
 
 import           Control.Lens.Type (Lens')
 import           Control.Lens (over, _Just)

@@ -68,11 +68,11 @@ library
     -fhide-source-paths
 
   exposed-modules:
-    OpenAPI.ToSchema
-    OpenAPI.ToSchema.Internal
+    OpenAPI.Class
+    OpenAPI.Internal.Class
     Servant.OpenAPI
     Servant.OpenAPI.Internal
-    Servant.OpenAPI.Internal.Types
+    OpenAPI.Internal.Types
 
   build-depends:
       aeson                     >= 1.4.0    && < 1.5
@@ -95,7 +95,7 @@ library
   default-language:
     Haskell2010
 
-test-suite servant-openapi-tests
+test-suite openapi-tests
   type:
     exitcode-stdio-1.0
 

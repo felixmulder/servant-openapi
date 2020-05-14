@@ -1,8 +1,8 @@
 module Main where
 
-import Servant.OpenAPI.Internal.Types
+import OpenAPI.Internal.Types
 import Servant.OpenAPI.Internal
-import OpenAPI.ToSchema.Internal
+import OpenAPI.Internal.Class
 import Data.Yaml as Yaml
 import Data.Text (Text)
 import Data.Proxy

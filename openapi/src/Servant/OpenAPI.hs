@@ -7,7 +7,7 @@ module Servant.OpenAPI
   ) where
 
 import Data.Proxy (Proxy)
-import Servant.OpenAPI.Internal.Types (OpenAPI)
+import OpenAPI.Internal.Types (OpenAPI)
 
 class HasOpenAPI api where
   apiDefinition :: Proxy api -> OpenAPI

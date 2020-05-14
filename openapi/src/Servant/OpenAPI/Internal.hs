@@ -14,10 +14,10 @@ import           Data.Proxy
 import qualified Data.Text                      as Text
 import           GHC.TypeLits
 import           GHC.Generics
-import           OpenAPI.ToSchema
+import           OpenAPI.Class
 import           Servant.API                    as Servant
 import           Servant.API.Modifiers
-import           Servant.OpenAPI.Internal.Types as OpenAPI
+import           OpenAPI.Internal.Types as OpenAPI
 
 
 class HasAPISchema api where
