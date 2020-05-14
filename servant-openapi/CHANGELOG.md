@@ -1,4 +1,4 @@
-# Revision history for openapi
+# Revision history for servant-openapi
 
 ## 0.0.0.1 -- 2020-02-24
 

@@ -2,6 +2,7 @@ resolver: lts-15.2
 
 packages:
     - openapi
+    - servant-openapi
 
 extra-deps:
   - git: https://github.com/fieldstrength/aeson-deriving

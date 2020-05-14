@@ -68,11 +68,8 @@ library
     -fhide-source-paths
 
   exposed-modules:
-    OpenAPI.Class
-    OpenAPI.Internal.Class
     Servant.OpenAPI
     Servant.OpenAPI.Internal
-    OpenAPI.Internal.Types
 
   build-depends:
       aeson                     >= 1.4.0    && < 1.5
@@ -88,6 +85,7 @@ library
     , text                      >= 1.2      && < 1.3
     , yaml
     , extra
+    , openapi
 
   hs-source-dirs:
     src
@@ -95,7 +93,7 @@ library
   default-language:
     Haskell2010
 
-test-suite openapi-tests
+test-suite servant-openapi-tests
   type:
     exitcode-stdio-1.0
 
@@ -146,6 +144,8 @@ test-suite openapi-tests
 
     , aeson                     >= 1.4      && < 1.5
     , aeson-deriving
+    , openapi
+    , servant-openapi
     , base                      >= 4.9      && < 5
     , bytestring                >= 0.10     && < 0.11
     , case-insensitive          >= 1.2      && < 1.3

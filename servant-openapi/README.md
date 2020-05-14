@@ -1,4 +1,4 @@
-OpenAPI
+Servant OpenAPI
 ================
 Implements OpenAPI 3.0.3
 
