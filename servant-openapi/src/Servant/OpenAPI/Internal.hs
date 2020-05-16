@@ -155,6 +155,11 @@ instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasOp
           , content = Nothing
           }
 
+instance (HasOpenAPIEndpointInfo api)
+  => HasOpenAPIEndpointInfo (BasicAuth realm a :> api) where
+    toEndpointInfo Proxy =
+      toEndpointInfo (Proxy @api)
+
 instance (HasOpenAPIEndpointInfo l, HasOpenAPIEndpointInfo r)
   => HasOpenAPIEndpointInfo
     (l :<|> r) where
