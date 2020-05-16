@@ -18,8 +18,28 @@ import           OpenAPI
 import           Servant.API            as Servant
 import           Servant.API.Modifiers
 
-class HasAPISchema api where
-  toAPISchema :: Proxy api -> OpenAPI
+-- | A class for servant APIs for which the 'OpenAPI' specification can be generated.
+--
+--   The structural information that can be derived mechanically is in the `paths`
+--   field, which is handled by the 'HasOpenAPIEndpointInfo' class. To turn that
+--   into the full 'OpenAPI', either supply the extra metadata manually, or wrap your
+--   API type with 'AddOpenAPIMetadata' and supply the corresponding 'ToOpenAPIMetadata'
+--   instance.
+class HasOpenAPI api where
+  toOpenAPI :: Proxy api -> OpenAPI
+
+-- | Class for basic metadata contained in 'OpenAPI' which cannot be derived mechanically
+--   from a servant API type.
+class ToOpenAPIMetadata a where
+  toOpenAPIMetadata :: Proxy a -> OpenAPI
+
+data AddOpenAPIMetadata meta api
+
+instance (ToOpenAPIMetadata meta, HasOpenAPIEndpointInfo api)
+  => HasOpenAPI (AddOpenAPIMetadata meta api) where
+    toOpenAPI Proxy =
+      set #paths (toEndpointInfo $ Proxy @api) $
+        toOpenAPIMetadata (Proxy @meta)
 
 -- | Create an 'OpenAPI' object from the servant-generated endpoint data by providing
 --   the bare minimum hardcoded stub values for metadata fields. See 'blankOpenAPI'.

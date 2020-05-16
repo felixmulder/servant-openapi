@@ -1,13 +1,17 @@
 module Servant.OpenAPI
-  ( -- * Interface for materializing API definition
+  ( -- * Interface for generating OpenAPI definition
     HasOpenAPI(..)
 
+  , HasOpenAPIEndpointInfo(..)
+  , toBareOpenAPI
+
+  , ToOpenAPIMetadata
+  , AddOpenAPIMetadata
+
+  , blankInfo
+  , blankOpenAPI
+
     -- * API Types
-  , OpenAPI
   ) where
 
-import Data.Proxy (Proxy)
-import OpenAPI.Internal.Types (OpenAPI)
-
-class HasOpenAPI api where
-  apiDefinition :: Proxy api -> OpenAPI
+import Servant.OpenAPI.Internal
