@@ -68,7 +68,7 @@ library
     -fhide-source-paths
 
   exposed-modules:
-    OpenAPI.Class
+    OpenAPI
     OpenAPI.Internal.Class
     OpenAPI.Internal.Types
     OpenAPI.Internal.References

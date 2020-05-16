@@ -14,8 +14,7 @@ import           Data.Proxy
 import qualified Data.Text              as Text
 import           GHC.Generics
 import           GHC.TypeLits
-import           OpenAPI.Class
-import           OpenAPI.Internal.Types as OpenAPI
+import           OpenAPI
 import           Servant.API            as Servant
 import           Servant.API.Modifiers
 

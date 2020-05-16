@@ -1,23 +1,23 @@
+{-# LANGUAGE DefaultSignatures    #-}
+{-# LANGUAGE OverloadedLabels     #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE OverloadedLabels #-}
 
 module OpenAPI.Internal.Class where
 
-import qualified Data.Map.Strict as Map
-import qualified Data.Text as T
-import Data.Text (Text)
-import Data.Kind (Type)
-import Data.Proxy
-import Control.Lens hiding (enum)
-import Data.Function
-import Data.List.NonEmpty (NonEmpty)
-import Data.Coerce (coerce)
-import OpenAPI.Internal.Types
-import GHC.Generics
-import Data.Functor
-import Prelude hiding (maximum, minimum, not,)
-import GHC.TypeLits
+import           Control.Lens           hiding (enum)
+import           Data.Coerce            (coerce)
+import           Data.Function
+import           Data.Functor
+import           Data.Kind              (Type)
+import           Data.List.NonEmpty     (NonEmpty)
+import qualified Data.Map.Strict        as Map
+import           Data.Proxy
+import           Data.Text              (Text)
+import qualified Data.Text              as T
+import           GHC.Generics
+import           GHC.TypeLits
+import           OpenAPI.Internal.Types
+import           Prelude                hiding (maximum, minimum, not)
 
 
 -- | Types for which we can produce a 'SchemaObject' that accurately describes the
@@ -287,39 +287,3 @@ transformNames opts
   where
     switchPhantom :: DatatypeInfo 'Source -> DatatypeInfo 'Wire
     switchPhantom = coerce
-
-
-blankSchema :: SchemaType -> SchemaObject
-blankSchema ty = SchemaObject
-  { title = Nothing
-  , type_ = ty
-  , discriminator = Nothing
-  , multipleOf = Nothing
-  , maximum = Nothing
-  , exclusiveMaximum = Nothing
-  , minimum = Nothing
-  , exclusiveMinimum = Nothing
-  , maxLength = Nothing
-  , minLength = Nothing
-  , pattern = Nothing
-  , maxItems = Nothing
-  , minItems = Nothing
-  , uniqueItems = Nothing
-  , maxProperties = Nothing
-  , minProperties = Nothing
-  , required = Nothing
-  , enum = Nothing
-  , allOf = Nothing
-  , oneOf = Nothing
-  , anyOf = Nothing
-  , not = Nothing
-  , items = Nothing
-  , properties = Nothing
-  , additionalProperties = Nothing
-  , description = Nothing
-  , format = Nothing
-  , default_ = Nothing
-  }
-
-blankObjectSchema :: SchemaObject
-blankObjectSchema = blankSchema Object

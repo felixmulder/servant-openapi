@@ -2,26 +2,26 @@
 --  https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.3.md
 --
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedLabels      #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 module OpenAPI.Internal.Types where
 
-import Prelude hiding (head)
-import           Control.Lens.Type (Lens', Traversal')
-import           Control.Lens (over, _Just)
-import           Control.Monad ((>=>))
-import qualified Data.Aeson as Aeson (Value)
-import           Data.Aeson
+import           Control.Lens         (over, _Just)
+import           Control.Lens.Type    (Lens', Traversal')
+import           Control.Monad        ((>=>))
+import           Data.Aeson           hiding (Object)
+import qualified Data.Aeson           as Aeson (Value)
 import           Data.Aeson.Deriving
-import           Data.Function ((&))
-import           Data.Functor ((<&>))
+import           Data.Function        ((&))
+import           Data.Functor         ((<&>))
 import           Data.Generics.Labels ()
-import           Data.Map.Strict (Map)
-import           Data.String (IsString)
-import qualified Data.Text as Text
-import           Data.Text (Text)
-import           GHC.Generics (Generic(..))
+import           Data.Map.Strict      (Map)
+import           Data.String          (IsString)
+import           Data.Text            (Text)
+import qualified Data.Text            as Text
+import           GHC.Generics         (Generic (..))
+import           Prelude              hiding (head)
 
 -- Aeson encoding settings
 type PackageOpts =
@@ -71,6 +71,41 @@ data OpenAPI = OpenAPI
   }
   deriving stock (Generic, Show)
   deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts OpenAPI
+
+blankSchema :: SchemaType -> SchemaObject
+blankSchema ty = SchemaObject
+  { title = Nothing
+  , type_ = ty
+  , discriminator = Nothing
+  , multipleOf = Nothing
+  , maximum = Nothing
+  , exclusiveMaximum = Nothing
+  , minimum = Nothing
+  , exclusiveMinimum = Nothing
+  , maxLength = Nothing
+  , minLength = Nothing
+  , pattern = Nothing
+  , maxItems = Nothing
+  , minItems = Nothing
+  , uniqueItems = Nothing
+  , maxProperties = Nothing
+  , minProperties = Nothing
+  , required = Nothing
+  , enum = Nothing
+  , allOf = Nothing
+  , oneOf = Nothing
+  , anyOf = Nothing
+  , not = Nothing
+  , items = Nothing
+  , properties = Nothing
+  , additionalProperties = Nothing
+  , description = Nothing
+  , format = Nothing
+  , default_ = Nothing
+  }
+
+blankObjectSchema :: SchemaObject
+blankObjectSchema = blankSchema Object
 
 apiInfo :: Lens' OpenAPI InfoObject
 apiInfo = #info
@@ -434,7 +469,7 @@ data ComponentsObject = ComponentsObject
   deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ComponentsObject
 
 emptyComponents :: ComponentsObject
-emptyComponents = ComponentsObject 
+emptyComponents = ComponentsObject
   { schemas = Nothing
   , responses = Nothing
   , parameters = Nothing
