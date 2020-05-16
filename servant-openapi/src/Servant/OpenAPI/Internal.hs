@@ -4,7 +4,7 @@
 
 module Servant.OpenAPI.Internal where
 
-import           Control.Lens (Lens', mapped, over, set, view, _1)
+import           Control.Lens (Lens', mapped, over, set, view, _1, (&))
 import           Data.Functor
 import           Control.Applicative (liftA2, (<|>))
 import           Data.Generics.Labels           ()
@@ -19,12 +19,35 @@ import           Servant.API                    as Servant
 import           Servant.API.Modifiers
 import           OpenAPI.Internal.Types as OpenAPI
 
-
 class HasAPISchema api where
   toAPISchema :: Proxy api -> OpenAPI
 
+toBareOpenAPI :: forall api. HasEndpoints api => Proxy api -> OpenAPI
+toBareOpenAPI Proxy =
+  blankOpenAPI
+    & set #paths (toEndpoints $ Proxy @api)
 
-type PathsObject = Map PathPattern PathItemObject
+blankInfo :: InfoObject
+blankInfo = InfoObject
+  { title = "Untitled API"
+  , description = Nothing
+  , termsOfService = Nothing
+  , contact = Nothing
+  , license = Nothing
+  , version = "1.0"
+  }
+
+blankOpenAPI :: OpenAPI
+blankOpenAPI = OpenAPI
+  { openapi = "3.0.3"
+  , info = blankInfo
+  , servers = Nothing
+  , paths = mempty
+  , components = Nothing
+  , security = Nothing
+  , tags = Nothing
+  , externalDocs = Nothing
+  }
 
 -- | Only to be used with order-preserving function
 unsafeMapPathPatterns :: (PathPattern -> PathPattern) -> PathsObject -> PathsObject

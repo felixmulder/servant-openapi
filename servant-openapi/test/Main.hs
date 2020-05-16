@@ -1,6 +1,6 @@
 module Main where
 
-import OpenAPI.Internal.Types
+import OpenAPI.Internal.References
 import Servant.OpenAPI.Internal
 import OpenAPI.Internal.Class
 import Data.Yaml as Yaml
@@ -13,11 +13,9 @@ import Servant.API
 
 main :: IO ()
 main = do
-  let endpoints = toEndpoints $ Proxy @API
-  print endpoints
-  BS.putStrLn ("\n" <> Yaml.encode endpoints)
-
-
+  let openApi = pruneAndReference . toBareOpenAPI $ Proxy @API
+  print openApi
+  BS.putStrLn ("\n" <> Yaml.encode openApi)
 
 type API = CatAPI :<|> DogAPI :<|> DeleteDogAPI
 

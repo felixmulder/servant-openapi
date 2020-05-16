@@ -3,10 +3,12 @@
 --
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module OpenAPI.Internal.Types where
 
-import           Control.Lens.Type (Lens')
+import Prelude hiding (head)
+import           Control.Lens.Type (Lens', Traversal')
 import           Control.Lens (over, _Just)
 import           Control.Monad ((>=>))
 import qualified Data.Aeson as Aeson (Value)
@@ -49,7 +51,7 @@ data OpenAPI = OpenAPI
     --   @/@.
   , paths :: Map PathPattern PathItemObject
     -- ^ The available paths and operations for the API
-  , compontents :: Maybe ComponentsObject
+  , components :: Maybe ComponentsObject
     -- ^ An element to hold various schemas for the specification
   , security :: Maybe [SecurityRequirementObject]
     -- ^ A declaration of which security mechanisms can be used across the API.
@@ -80,7 +82,7 @@ apiPaths :: Lens' OpenAPI (Map PathPattern PathItemObject)
 apiPaths = #paths
 
 apiComponents :: Lens' OpenAPI (Maybe ComponentsObject)
-apiComponents = #compontents
+apiComponents = #components
 
 apiSecurity :: Lens' OpenAPI (Maybe [SecurityRequirementObject])
 apiSecurity = #security
@@ -90,6 +92,9 @@ apiTags = #tags
 
 apiExternalDocs :: Lens' OpenAPI (Maybe ExternalDocumentationObject)
 apiExternalDocs = #externalDocs
+
+
+type PathsObject = Map PathPattern PathItemObject
 
 
 data InfoObject = InfoObject
@@ -325,16 +330,28 @@ data PathItemObject = PathItemObject
   deriving stock (Generic, Show)
   deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts PathItemObject
 
+
+allOperationsMay :: Traversal' PathItemObject (Maybe OperationObject)
+allOperationsMay f PathItemObject{..} =
+  PathItemObject
+    <$> pure summary
+    <*> pure description
+    <*> f get
+    <*> f put
+    <*> f post
+    <*> f delete
+    <*> f options
+    <*> f head
+    <*> f patch
+    <*> f trace
+    <*> pure servers
+    <*> pure parameters
+
+allOperations :: Traversal' PathItemObject OperationObject
+allOperations = allOperationsMay . _Just
+
 mapOperations :: (OperationObject -> OperationObject) -> PathItemObject -> PathItemObject
-mapOperations f
-  = over (#get . _Just) f
-  . over (#put . _Just) f
-  . over (#post . _Just) f
-  . over (#delete . _Just) f
-  . over (#options . _Just) f
-  . over (#head . _Just) f
-  . over (#patch . _Just) f
-  . over (#trace . _Just) f
+mapOperations = over allOperations
 
 
 data OperationObject = OperationObject
@@ -394,27 +411,40 @@ data OperationObject = OperationObject
   deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts OperationObject
 
 data ComponentsObject = ComponentsObject
-  { schemas :: [ReferenceOr SchemaObject]
+  { schemas         :: Maybe (Map Text (ReferenceOr SchemaObject))
     -- ^ An object to hold reusable Schema Objects
-  , responses :: [ReferenceOr ResponseObject]
+  , responses       :: Maybe (Map Text (ReferenceOr ResponseObject))
     -- ^ An object to hold reusable Response Objects
-  , parameters :: [ReferenceOr ParameterObject]
+  , parameters      :: Maybe (Map Text (ReferenceOr ParameterObject))
     -- ^ An object to hold reusable Parameter Objects
-  , examples :: [ReferenceOr ExampleObject]
+  , examples        :: Maybe (Map Text (ReferenceOr ExampleObject))
     -- ^ An object to hold reusable Example Objects
-  , requestBodies :: [ReferenceOr RequestBodyObject]
+  , requestBodies   :: Maybe (Map Text (ReferenceOr RequestBodyObject))
     -- ^ An object to hold reusable Request Body Objects
-  , headers :: Maybe (Map Text (ReferenceOr HeaderObject))
+  , headers         :: Maybe (Map Text (ReferenceOr HeaderObject))
     -- ^ An object to hold reusable Header Objects
-  , securitySchemes :: [ReferenceOr SecuritySchemeObject]
+  , securitySchemes :: Maybe (Map Text (ReferenceOr SecuritySchemeObject))
     -- ^ An object to hold reusable Security Scheme Objects
-  , links :: [ReferenceOr LinkObject]
+  , links           :: Maybe (Map Text (ReferenceOr LinkObject))
     -- ^ An object to hold reusable Link Objects
-  , callbacks :: [ReferenceOr CallbackObject]
+  , callbacks       :: Maybe (Map Text (ReferenceOr CallbackObject))
     -- ^ An object to hold reusable Callback Objects
   }
   deriving stock (Generic, Show)
   deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ComponentsObject
+
+emptyComponents :: ComponentsObject
+emptyComponents = ComponentsObject 
+  { schemas = Nothing
+  , responses = Nothing
+  , parameters = Nothing
+  , examples = Nothing
+  , requestBodies = Nothing
+  , headers = Nothing
+  , securitySchemes = Nothing
+  , links = Nothing
+  , callbacks = Nothing
+  }
 
 -- | An object containing a @$ref@ field
 newtype ReferenceObject = ReferenceObject { ref :: Text }
