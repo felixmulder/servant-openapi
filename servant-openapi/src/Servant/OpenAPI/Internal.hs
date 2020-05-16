@@ -22,11 +22,24 @@ import           OpenAPI.Internal.Types as OpenAPI
 class HasAPISchema api where
   toAPISchema :: Proxy api -> OpenAPI
 
+-- | Create an 'OpenAPI' object from the servant-generated endpoint data by providing
+--   the bare minimum hardcoded stub values for metadata fields. See 'blankOpenAPI'.
+--   In particular, the required fields are populated as follows:
+--
+--     * title: "Untitled API"
+--
+--     * version: "1.0"
 toBareOpenAPI :: forall api. HasEndpoints api => Proxy api -> OpenAPI
 toBareOpenAPI Proxy =
   blankOpenAPI
     & set #paths (toEndpoints $ Proxy @api)
 
+-- | Provide meaningless values for the required fields of 'InfoObject'. Consider
+--   filling in meaningful values for the required fields. Otherwise this gives:
+--
+--     * title: "Untitled API"
+--
+--     * version: "1.0"
 blankInfo :: InfoObject
 blankInfo = InfoObject
   { title = "Untitled API"
@@ -37,6 +50,8 @@ blankInfo = InfoObject
   , version = "1.0"
   }
 
+-- | Provide meaningless stub values for the required data of 'OpenAPI'. It's
+--   recommended to fill in required fields of 'InfoObject'; see 'blankInfo'.
 blankOpenAPI :: OpenAPI
 blankOpenAPI = OpenAPI
   { openapi = "3.0.3"
@@ -49,7 +64,7 @@ blankOpenAPI = OpenAPI
   , externalDocs = Nothing
   }
 
--- | Only to be used with order-preserving function
+-- | Only to be used with order-preserving function.
 unsafeMapPathPatterns :: (PathPattern -> PathPattern) -> PathsObject -> PathsObject
 unsafeMapPathPatterns f
   = Map.fromList
