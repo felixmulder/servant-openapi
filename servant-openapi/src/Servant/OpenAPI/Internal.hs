@@ -1,23 +1,23 @@
+{-# LANGUAGE GADTs                #-}
+{-# LANGUAGE OverloadedLabels     #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE GADTs #-}
 
 module Servant.OpenAPI.Internal where
 
-import           Control.Lens (Lens', mapped, over, set, view, _1, (&))
+import           Control.Applicative    (liftA2, (<|>))
+import           Control.Lens           (Lens', mapped, over, set, view, (&), _1)
 import           Data.Functor
-import           Control.Applicative (liftA2, (<|>))
-import           Data.Generics.Labels           ()
-import           Data.Map (Map)
-import qualified Data.Map.Strict                as Map
+import           Data.Generics.Labels   ()
+import           Data.Map               (Map)
+import qualified Data.Map.Strict        as Map
 import           Data.Proxy
-import qualified Data.Text                      as Text
-import           GHC.TypeLits
+import qualified Data.Text              as Text
 import           GHC.Generics
+import           GHC.TypeLits
 import           OpenAPI.Class
-import           Servant.API                    as Servant
-import           Servant.API.Modifiers
 import           OpenAPI.Internal.Types as OpenAPI
+import           Servant.API            as Servant
+import           Servant.API.Modifiers
 
 class HasAPISchema api where
   toAPISchema :: Proxy api -> OpenAPI
@@ -29,10 +29,10 @@ class HasAPISchema api where
 --     * title: "Untitled API"
 --
 --     * version: "1.0"
-toBareOpenAPI :: forall api. HasEndpoints api => Proxy api -> OpenAPI
+toBareOpenAPI :: forall api. HasOpenAPIEndpointInfo api => Proxy api -> OpenAPI
 toBareOpenAPI Proxy =
   blankOpenAPI
-    & set #paths (toEndpoints $ Proxy @api)
+    & set #paths (toEndpointInfo $ Proxy @api)
 
 -- | Provide meaningless values for the required fields of 'InfoObject'. Consider
 --   filling in meaningful values for the required fields. Otherwise this gives:
@@ -71,26 +71,26 @@ unsafeMapPathPatterns f
   . over (mapped . _1) f
   . Map.toList
 
-class HasEndpoints api where
-  toEndpoints :: Proxy api -> Map PathPattern PathItemObject
+class HasOpenAPIEndpointInfo api where
+  toEndpointInfo :: Proxy api -> Map PathPattern PathItemObject
 
 
 -- | The change to the 'PathsObject' may affect one or many endpoints.
-instance (KnownSymbol str, HasEndpoints api)
-  => HasEndpoints
+instance (KnownSymbol str, HasOpenAPIEndpointInfo api)
+  => HasOpenAPIEndpointInfo
   (str :> api) where
-    toEndpoints Proxy =
+    toEndpointInfo Proxy =
       unsafeMapPathPatterns
         (over #unPathPattern $ (<>) [PathPart . Text.pack . symbolVal $ Proxy @str])
-        (toEndpoints $ Proxy @api)
+        (toEndpointInfo $ Proxy @api)
 
-instance (ToOpenAPISchema a, KnownSymbol name, HasEndpoints api)
-  => HasEndpoints
+instance (ToOpenAPISchema a, KnownSymbol name, HasOpenAPIEndpointInfo api)
+  => HasOpenAPIEndpointInfo
   (Capture name a :> api) where
-    toEndpoints Proxy =
+    toEndpointInfo Proxy =
       unsafeMapPathPatterns
         (over #unPathPattern $ (<>) [PathVariable . Text.pack . symbolVal $ Proxy @name])
-        (mapOperations (addParam param) <$> toEndpoints (Proxy @api))
+        (mapOperations (addParam param) <$> toEndpointInfo (Proxy @api))
       where
         param = ParameterObject
           { in_ = Path
@@ -108,11 +108,11 @@ instance (ToOpenAPISchema a, KnownSymbol name, HasEndpoints api)
           , content = Nothing
           }
 
-instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasEndpoints api)
-  => HasEndpoints
+instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasOpenAPIEndpointInfo api)
+  => HasOpenAPIEndpointInfo
   (QueryParam' mods name a :> api) where
-    toEndpoints Proxy =
-      mapOperations (addParam param) <$> toEndpoints (Proxy @api)
+    toEndpointInfo Proxy =
+      mapOperations (addParam param) <$> toEndpointInfo (Proxy @api)
       where
         param = ParameterObject
           { in_ = Query
@@ -132,11 +132,11 @@ instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasEn
           , content = Nothing
           }
 
-instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasEndpoints api)
-  => HasEndpoints
+instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasOpenAPIEndpointInfo api)
+  => HasOpenAPIEndpointInfo
   (Header' mods name a :> api) where
-    toEndpoints Proxy =
-      mapOperations (addParam param) <$> toEndpoints (Proxy @api)
+    toEndpointInfo Proxy =
+      mapOperations (addParam param) <$> toEndpointInfo (Proxy @api)
       where
         param = ParameterObject
           { in_ = OpenAPI.Header
@@ -156,13 +156,13 @@ instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasEn
           , content = Nothing
           }
 
-instance (HasEndpoints l, HasEndpoints r)
-  => HasEndpoints
+instance (HasOpenAPIEndpointInfo l, HasOpenAPIEndpointInfo r)
+  => HasOpenAPIEndpointInfo
     (l :<|> r) where
-      toEndpoints Proxy =
+      toEndpointInfo Proxy =
         Map.unionWith fish
-          (toEndpoints $ Proxy @l)
-          (toEndpoints $ Proxy @r)
+          (toEndpointInfo $ Proxy @l)
+          (toEndpointInfo $ Proxy @r)
 
 fish :: PathItemObject -> PathItemObject -> PathItemObject
 fish x y = PathItemObject
@@ -183,24 +183,26 @@ fish x y = PathItemObject
 deepMappend :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a
 deepMappend f mx my = liftA2 f mx my <|> mx <|> my
 
-instance (KnownSymbol name, HasEndpoints api) => HasEndpoints (QueryFlag name :> api) where
-  toEndpoints Proxy = (toEndpoints $ Proxy @api) <&> mapOperations (addParam param)
-    where
-      param = ParameterObject
-        { in_ = Query
-        , name = Text.pack . symbolVal $ Proxy @name
-        , description = Nothing
-        , required = Just False
-        , deprecated = Nothing
-        , allowEmptyValue = Just True
-        , style = Nothing
-        , explode = Nothing
-        , allowReserved = Nothing
-        , schema = Nothing
-        , example = Nothing
-        , examples = Nothing
-        , content = Nothing
-        }
+instance (KnownSymbol name, HasOpenAPIEndpointInfo api)
+  => HasOpenAPIEndpointInfo (QueryFlag name :> api) where
+    toEndpointInfo Proxy =
+      mapOperations (addParam param) <$> toEndpointInfo (Proxy @api)
+      where
+        param = ParameterObject
+          { in_ = Query
+          , name = Text.pack . symbolVal $ Proxy @name
+          , description = Nothing
+          , required = Just False
+          , deprecated = Nothing
+          , allowEmptyValue = Just True
+          , style = Nothing
+          , explode = Nothing
+          , allowReserved = Nothing
+          , schema = Nothing
+          , example = Nothing
+          , examples = Nothing
+          , content = Nothing
+          }
 
 addParam :: ParameterObject -> OperationObject -> OperationObject
 addParam param = over #parameters $
@@ -209,18 +211,18 @@ addParam param = over #parameters $
     (\ps -> Just (Concrete param : ps))
 
 instance
-  ( HasEndpoints api
+  ( HasOpenAPIEndpointInfo api
   , ToOpenAPISchema a
   , SBoolI (FoldLenient mods))
-  => HasEndpoints
+  => HasOpenAPIEndpointInfo
     (ReqBody' mods contentTypes a :> api) where
-      toEndpoints Proxy =
+      toEndpointInfo Proxy =
         mapOperations (set #requestBody . Just $ Concrete body)
-          <$> toEndpoints (Proxy @api)
+          <$> toEndpointInfo (Proxy @api)
         where
           body = RequestBodyObject
             { description = Nothing
-            , content = Map.singleton "application/json"  -- FIXME
+            , content = Map.singleton applicationJson
               MediaTypeObject
                 { schema = Just . Concrete . toSchema $ Proxy @a
                 , example = Nothing
@@ -233,9 +235,9 @@ instance
             }
 
 instance (v ~ Verb verb status contentTypes returned, HasOperation v, IsVerb verb)
-  => HasEndpoints
+  => HasOpenAPIEndpointInfo
     (Verb verb status contentTypes returned) where
-      toEndpoints Proxy =
+      toEndpointInfo Proxy =
         Map.singleton (PathPattern []) $
           set
             (verbLens . toVerb $ Proxy @verb)
@@ -278,9 +280,12 @@ instance (KnownNat status, HasResponse response)
         , operationId = Nothing
         , parameters = Nothing
         , requestBody = Nothing
-        -- https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.3.md#responsesObject
-        , responses = ResponsesObject .
-            Map.singleton (Text.pack . show . natVal $ Proxy @status) . Concrete . toResponseObject $ Proxy @response
+        , responses
+            = ResponsesObject
+            . Map.singleton (Text.pack . show . natVal $ Proxy @status)
+            . Concrete
+            . toResponseObject
+            $ Proxy @response
         , callbacks = Nothing
         , deprecated = Nothing
         , security = Nothing
