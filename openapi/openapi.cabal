@@ -15,11 +15,11 @@ license:
 license-file:
   LICENSE
 author:
-  Felix Mulder
+  Cliff Harvey, Felix Mulder
 maintainer:
-  felix.mulder@gmail.com
+  cs.hbar+hs@gmail.com, felix.mulder@gmail.com
 copyright:
-  Felix Mulder
+  Cliff Harvey, Felix Mulder
 category:
   Web, OpenAPI
 build-type:
