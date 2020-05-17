@@ -5,17 +5,20 @@
 module OpenAPI.Internal.Class where
 
 import           Control.Lens           hiding (enum)
+import qualified Data.Aeson             as Aeson
+import           Data.Aeson.Deriving    hiding (SumEncoding)
 import           Data.Coerce            (coerce)
 import           Data.Function
 import           Data.Functor
-import qualified Data.Aeson             as Aeson
-import           Data.Aeson.Deriving    hiding (SumEncoding)
+import           Data.Int
 import           Data.Kind              (Type)
 import           Data.List.NonEmpty     (NonEmpty)
 import qualified Data.Map.Strict        as Map
 import           Data.Proxy
 import           Data.Text              (Text)
 import qualified Data.Text              as T
+import qualified Data.Text.Lazy         as LazyText
+import           Data.Time              (Day, UTCTime)
 import           GHC.Generics
 import           GHC.TypeLits
 import           OpenAPI.Internal.Types
@@ -29,16 +32,27 @@ class ToOpenAPISchema a where
   default toSchema :: GToOpenAPI (Rep a) => Proxy a -> SchemaObject
   toSchema = genericToSchema defaultSchemaOptions
 
-instance ToOpenAPISchema Text where toSchema Proxy = (blankSchema String) {title=Just "Text"}
-instance ToOpenAPISchema Int where toSchema Proxy = (blankSchema Integer) {title=Just "Integer"}
-instance ToOpenAPISchema Bool where toSchema Proxy = (blankSchema Boolean) {title=Just "Bool"}
+
+instance ToOpenAPISchema Text where toSchema Proxy = (blankSchema String)
+instance ToOpenAPISchema LazyText.Text where toSchema Proxy = (blankSchema String)
+instance {-# OVERLAPPING #-} ToOpenAPISchema String where toSchema Proxy = (blankSchema String)
+
+instance ToOpenAPISchema Int where toSchema Proxy = (blankSchema Integer)
+instance ToOpenAPISchema Integer where toSchema Proxy = (blankSchema Integer)
+instance ToOpenAPISchema Float where toSchema Proxy = (blankSchema Number) {format=Just "float"}
+instance ToOpenAPISchema Double where toSchema Proxy = (blankSchema Number) {format=Just "double"}
+instance ToOpenAPISchema Int32 where toSchema Proxy = (blankSchema Integer) {format = Just "int32"}
+instance ToOpenAPISchema Int64 where toSchema Proxy = (blankSchema Integer) {format = Just "int64"}
+
+instance ToOpenAPISchema Bool where toSchema Proxy = (blankSchema Boolean)
+
+instance ToOpenAPISchema UTCTime where toSchema Proxy = (blankSchema String) {format = Just "date-time"}
+instance ToOpenAPISchema Day where toSchema Proxy = (blankSchema String) {format = Just "date"}
 
 instance ToOpenAPISchema a => ToOpenAPISchema [a] where
   toSchema Proxy =
     (blankSchema Array)
-      { title = Just "Array"
-      , items = Just . Concrete . toSchema $ Proxy @a
-      }
+      {items = Just . Concrete . toSchema $ Proxy @a}
 
 instance ToOpenAPISchema a => ToOpenAPISchema (NonEmpty a) where
   toSchema Proxy =
