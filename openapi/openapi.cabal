@@ -37,6 +37,7 @@ library
     BlockArguments
     DataKinds
     DeriveAnyClass
+    DeriveFunctor
     DeriveGeneric
     DerivingStrategies
     DerivingVia
@@ -118,6 +119,7 @@ test-suite openapi-tests
     BlockArguments
     DataKinds
     DeriveAnyClass
+    DeriveFunctor
     DeriveGeneric
     DerivingStrategies
     DerivingVia

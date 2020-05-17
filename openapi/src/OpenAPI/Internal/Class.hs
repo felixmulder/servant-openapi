@@ -8,6 +8,8 @@ import           Control.Lens           hiding (enum)
 import           Data.Coerce            (coerce)
 import           Data.Function
 import           Data.Functor
+import qualified Data.Aeson             as Aeson
+import           Data.Aeson.Deriving    hiding (SumEncoding)
 import           Data.Kind              (Type)
 import           Data.List.NonEmpty     (NonEmpty)
 import qualified Data.Map.Strict        as Map
@@ -18,7 +20,6 @@ import           GHC.Generics
 import           GHC.TypeLits
 import           OpenAPI.Internal.Types
 import           Prelude                hiding (maximum, minimum, not)
-
 
 -- | Types for which we can produce a 'SchemaObject' that accurately describes the
 --   JSON serialization format.
@@ -287,3 +288,38 @@ transformNames opts
   where
     switchPhantom :: DatatypeInfo 'Source -> DatatypeInfo 'Wire
     switchPhantom = coerce
+
+
+--------------------------------- aeson-deriving support ---------------------------------
+
+instance (GToOpenAPI (Rep a), ToAesonOptions opts) => ToOpenAPISchema (GenericEncoded opts a) where
+  toSchema Proxy = case fromAesonOptions . toAesonOptions $ Proxy @opts of
+    SupportedOptions options -> genericToSchema options (Proxy @a)
+    UnsupportedTwoElemArray -> blankSchema Array
+    UnsupportedObjectWithSingleField -> blankSchema Object
+
+fromAesonOptions :: Aeson.Options -> SupportedOptions GenericSchemaOptions
+fromAesonOptions options =
+  fromAesonSumEncoding (Aeson.sumEncoding options) <&> \sumOptions ->
+    GenericSchemaOptions
+      { fieldNameModifier = Aeson.fieldLabelModifier options
+      , constructorTagModifier = Aeson.constructorTagModifier options
+      , sumEncoding = sumOptions
+      , allNullaryToStringTag = Aeson.allNullaryToStringTag options
+      , tagSingleConstructors = Aeson.tagSingleConstructors options
+      , useDiscrimatorField = False  -- no analog in aeson
+      }
+
+-- | For handling conversion from Aeson options that are not easy to describe in OpenAPI
+data SupportedOptions a
+  = SupportedOptions a
+  | UnsupportedObjectWithSingleField
+  | UnsupportedTwoElemArray
+  deriving stock (Show, Functor)
+
+fromAesonSumEncoding :: Aeson.SumEncoding -> SupportedOptions SumEncoding
+fromAesonSumEncoding = \case
+  Aeson.TaggedObject tag _contents -> SupportedOptions $ Tagged tag
+  Aeson.UntaggedValue -> SupportedOptions $ Untagged
+  Aeson.ObjectWithSingleField -> UnsupportedObjectWithSingleField
+  Aeson.TwoElemArray -> UnsupportedTwoElemArray
