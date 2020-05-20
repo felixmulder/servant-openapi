@@ -5,5 +5,4 @@ packages:
     - servant-openapi
 
 extra-deps:
-  - git: https://github.com/fieldstrength/aeson-deriving
-    commit: 8ce466648e8e03429ba5975ffa6f28e659cb6da4
+    - aeson-deriving-0.1.0.0
