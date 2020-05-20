@@ -328,13 +328,13 @@ instance (KnownHeaders hs, HasResponse r) => HasResponse (Headers hs r) where
   toResponseObject Proxy =
     (toResponseObject $ Proxy @r)
       { headers = Just . Map.fromList $
-        (headerVals $ Proxy @hs) <&> \h ->
-          (Text.pack h,) . Concrete $ HeaderObject
+        (headerVals $ Proxy @hs) <&> \(hStr, hSchema) ->
+          (Text.pack hStr,) . Concrete $ HeaderObject
             { description = Nothing
             , required = Nothing
             , deprecated = Nothing
             , explode = Nothing
-            , schema = Nothing  -- TODO: header schema
+            , schema = Just $ Concrete hSchema
             , example = Nothing
             , examples = Nothing
             }
@@ -400,9 +400,9 @@ instance IsVerb 'TRACE where toVerb Proxy = VerbTrace
 
 
 class KnownHeaders hs where
-  headerVals :: Proxy hs -> [String] -- TODO: pair with schemas
+  headerVals :: Proxy hs -> [(String, SchemaObject)]
 
 instance KnownHeaders ('[] :: [*]) where headerVals Proxy = []
-instance (KnownSymbol str, KnownHeaders rest)
+instance (KnownSymbol str, ToOpenAPISchema a, KnownHeaders rest)
   => KnownHeaders ((Header str a ': rest) :: [*]) where
-    headerVals Proxy = symbolVal (Proxy @str) : headerVals (Proxy @rest)
+    headerVals Proxy = (symbolVal $ Proxy @str, toSchema $ Proxy @a) : headerVals (Proxy @rest)
