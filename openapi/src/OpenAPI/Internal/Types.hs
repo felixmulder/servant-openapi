@@ -72,41 +72,6 @@ data OpenAPI = OpenAPI
   deriving stock (Generic, Show)
   deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts OpenAPI
 
-blankSchema :: SchemaType -> SchemaObject
-blankSchema ty = SchemaObject
-  { title = Nothing
-  , type_ = ty
-  , discriminator = Nothing
-  , multipleOf = Nothing
-  , maximum = Nothing
-  , exclusiveMaximum = Nothing
-  , minimum = Nothing
-  , exclusiveMinimum = Nothing
-  , maxLength = Nothing
-  , minLength = Nothing
-  , pattern = Nothing
-  , maxItems = Nothing
-  , minItems = Nothing
-  , uniqueItems = Nothing
-  , maxProperties = Nothing
-  , minProperties = Nothing
-  , required = Nothing
-  , enum = Nothing
-  , allOf = Nothing
-  , oneOf = Nothing
-  , anyOf = Nothing
-  , not = Nothing
-  , items = Nothing
-  , properties = Nothing
-  , additionalProperties = Nothing
-  , description = Nothing
-  , format = Nothing
-  , default_ = Nothing
-  }
-
-blankObjectSchema :: SchemaObject
-blankObjectSchema = blankSchema Object
-
 apiInfo :: Lens' OpenAPI InfoObject
 apiInfo = #info
 
@@ -779,7 +744,7 @@ data Discriminator = Discriminator
 data SchemaObject = SchemaObject
   { title :: Maybe Text
     -- ^ The name of the schema
-  , type_ :: SchemaType
+  , type_ :: Maybe SchemaType
     -- ^ Value MUST be a string. Multiple types via an array are not supported.
   , discriminator :: Maybe Discriminator
     -- ^ Adds support for polymorphism. The discriminator is an object name that is
@@ -864,6 +829,41 @@ data SchemaObject = SchemaObject
   }
   deriving stock (Generic, Show)
   deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts SchemaObject
+
+blankSchema :: SchemaType -> SchemaObject
+blankSchema ty = SchemaObject
+  { title = Nothing
+  , type_ = Just ty
+  , discriminator = Nothing
+  , multipleOf = Nothing
+  , maximum = Nothing
+  , exclusiveMaximum = Nothing
+  , minimum = Nothing
+  , exclusiveMinimum = Nothing
+  , maxLength = Nothing
+  , minLength = Nothing
+  , pattern = Nothing
+  , maxItems = Nothing
+  , minItems = Nothing
+  , uniqueItems = Nothing
+  , maxProperties = Nothing
+  , minProperties = Nothing
+  , required = Nothing
+  , enum = Nothing
+  , allOf = Nothing
+  , oneOf = Nothing
+  , anyOf = Nothing
+  , not = Nothing
+  , items = Nothing
+  , properties = Nothing
+  , additionalProperties = Nothing
+  , description = Nothing
+  , format = Nothing
+  , default_ = Nothing
+  }
+
+blankObjectSchema :: SchemaObject
+blankObjectSchema = blankSchema Object
 
 data SchemaType
   = Number
