@@ -66,7 +66,7 @@ data GenericSchemaOptions = GenericSchemaOptions
   , constructorTagModifier :: String -> String
   , sumEncoding :: SumEncoding
   -- , unwrapUnaryRecords :: Bool  == false
-  , allNullaryToStringTag :: Bool  -- ENUMS
+  , allNullaryToStringTag :: Bool
   , tagSingleConstructors :: Bool
   , useDiscrimatorField :: Bool
   -- ^ Requires tracking schema refs, with required names
@@ -199,11 +199,19 @@ instance (GConstructorInfo f, KnownSymbol name, KnownSymbol mod, KnownSymbol pkg
       , pkgName = symbolVal $ Proxy @pkg
       }
 
+-- | Create the 'SchemaObject' for a type using the generic type classes.
+--   NOTE: Consider avoiding calling this function directly. Its output is only correct
+--   if the right 'GenericSchemaOptions' is supplied, aligning with aeson's 'Options'
+---  or equivalent. Instead consider deriving via types from @aeson-deriving@, together
+--   with aeson classes, to ensure schemas are consistent with (de)serialization.
 genericToSchema :: forall a. (GToOpenAPI (Rep a)) => GenericSchemaOptions -> Proxy a -> SchemaObject
 genericToSchema opts Proxy = mkSchema opts . gToOpenAPI $ Proxy @(Rep a)
 
----------------------------- Main Generic class for datatypes ----------------------------
 
+--------------------------- Function to create the SchemaObject --------------------------
+
+-- | The main function that creates the SchemaObject, using the 'DatatypeInfo' generated
+--   by the generic type classes.
 mkSchema :: GenericSchemaOptions -> DatatypeInfo 'Source -> SchemaObject
 mkSchema opts d
   | isEnum d && allNullaryToStringTag opts = enumSchema (transformNames opts d)
@@ -238,7 +246,7 @@ enumSchema DatatypeInfo{typeName, constructors} =
 --
 --     * Conditions for 'enumSchema' not met.
 --
---     * NOT exactly one constructor.
+--     * Number of constructors /= 1.
 --
 --     * (Trivially true, for now:) only record/selector constructor fields
 taggedRecordSum :: GenericSchemaOptions -> String -> DatatypeInfo 'Wire -> SchemaObject
@@ -263,6 +271,8 @@ taggedRecordSum opts tag DatatypeInfo{typeName, constructors} =
 --     * @sumEncoding = Untagged@
 --
 --     * Conditions for 'enumSchema' not met.
+--
+--     * Number of constructors /= 1.
 --
 --     * (trivially true:) only record/selector constructor fields
 untaggedRecordSum :: DatatypeInfo 'Wire -> SchemaObject
@@ -290,14 +300,15 @@ constructorSchema ConstructorInfo{fields} =
 singleConstructorSchema :: String -> ConstructorInfo -> SchemaObject
 singleConstructorSchema name = set #title (Just $ T.pack name) . constructorSchema
 
--- Can define this either with coerce, or a proper type-changing lens in place of #constructos.
--- | Transform constructor and field names according to the functions defined in
---   the 'GenericSchemaOptions'.
+-- | Transform constructor and field names from Haskell source to wire format values
+--   according to the functions defined in 'GenericSchemaOptions'.
 transformNames :: GenericSchemaOptions -> DatatypeInfo 'Source -> DatatypeInfo 'Wire
 transformNames opts
   = over (#constructors . mapped . #constructorName)             (constructorTagModifier opts)
   . over (#constructors . mapped . #fields . mapped . #selector) (fieldNameModifier opts)
   . switchPhantom
+  -- We use a coercion here, but a proper type-changing lens in place of #constructors
+  -- would also work
 
   where
     switchPhantom :: DatatypeInfo 'Source -> DatatypeInfo 'Wire
