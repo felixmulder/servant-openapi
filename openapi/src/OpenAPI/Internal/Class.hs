@@ -213,18 +213,45 @@ genericToSchema opts Proxy = mkSchema opts . gToOpenAPI $ Proxy @(Rep a)
 -- | The main function that creates the SchemaObject, using the 'DatatypeInfo' generated
 --   by the generic type classes.
 mkSchema :: GenericSchemaOptions -> DatatypeInfo 'Source -> SchemaObject
-mkSchema opts d
-  | isEnum d && allNullaryToStringTag opts = enumSchema (transformNames opts d)
-  | otherwise, [c] <- constructors d = singleConstructorSchema (typeName d) c
+mkSchema opts (transformNames opts -> dtInfo)
+  -- view pattern here ^ prevents acces to the wrong version the DatatypeInfo
+  | isEnum dtInfo && allNullaryToStringTag opts = enumSchema dtInfo
+  | otherwise, [c] <- constructors dtInfo =
+      singleConstructorSchema (typeName dtInfo) c
+        & if tagSingleConstructors opts
+            then setSingleConstructorTag (T.pack $ constructorName c)
+            else id
   | otherwise = case sumEncoding opts of
-      Tagged tag -> taggedRecordSum opts tag $ transformNames opts d
-      Untagged -> untaggedRecordSum $ transformNames opts d
+      Tagged tag -> taggedRecordSum opts tag dtInfo
+      Untagged -> untaggedRecordSum dtInfo
+
+  where
+    setSingleConstructorTag :: Text -> SchemaObject -> SchemaObject
+    setSingleConstructorTag tagVal s = case sumEncoding opts of
+      Untagged -> s
+      Tagged (T.pack -> tag) -> s
+        & #properties %~ addToProperties tag (simpleEnumSchema [tagVal])
+        & #required %~ maybe (Just [tag]) (Just . (tag :))
+
+        -- QUESTION: should properties be populated at all when using `oneOf`?
+
+
+addToProperties :: Text -> SchemaObject -> Maybe Properties -> Maybe Properties
+addToProperties name schema = \case
+  Nothing -> Just . Properties $ Map.singleton name (Concrete schema)
+  Just (Properties ps) -> Just . Properties $ Map.insert name (Concrete schema) ps
 
 isEnum :: DatatypeInfo p -> Bool
 isEnum DatatypeInfo{constructors} = all nullary constructors
 
 nullary :: ConstructorInfo -> Bool
 nullary = (==0) . length . fields
+
+-- | A nameless schema that only declares type `String` with an enum options list
+simpleEnumSchema :: [Text] -> SchemaObject
+simpleEnumSchema vals =
+  (blankSchema String)
+    {enum = Just vals}
 
 -- | How to encode enums (types with all nullary constructors).
 --   Used when:
@@ -262,6 +289,7 @@ taggedRecordSum opts tag DatatypeInfo{typeName, constructors} =
           else Nothing
     , required = Just [T.pack tag]
     , properties = Just . Properties $ Map.singleton (T.pack tag) (Concrete $ blankSchema String)
+    -- QUESTION: should properties be populated at all when using `oneOf`?
     , oneOf = Just $ Concrete . constructorSchema <$> constructors
     }
 
