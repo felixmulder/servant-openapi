@@ -61,6 +61,11 @@ instance ToOpenAPISchema a => ToOpenAPISchema (NonEmpty a) where
 
 ------------------------------- Configuration for deriving -------------------------------
 
+-- | Configuration for generic deriving of 'ToOpenAPISchema'.
+--
+--   It is recommended not to use this type directly. Instead consider deriving the
+--   instance together with 'FromJSON'/'ToJSON' instances using @DerivingVia@ with types
+--   from @aeson-deriving@. This ensures schemas are consistent with (de)serialization.
 data GenericSchemaOptions = GenericSchemaOptions
   { fieldNameModifier :: String -> String
   , constructorTagModifier :: String -> String

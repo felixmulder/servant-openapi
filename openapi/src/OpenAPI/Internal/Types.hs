@@ -454,8 +454,11 @@ newtype ReferenceObject = ReferenceObject { ref :: Text }
       '[FieldLabelModifier := ("ref" ==> "$ref")]
       ReferenceObject
 
+-- | A Functor that signifies the inner type may appear directly or through a reference.
 data ReferenceOr a
+  -- | The enclosed reference must be followed to obtain the value
   = Ref ReferenceObject
+  -- | The value is directly present.
   | Concrete a
   deriving stock (Generic, Show)
 

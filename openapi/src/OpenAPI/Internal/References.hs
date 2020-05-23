@@ -26,8 +26,7 @@ pruneAndReference api =
     env :: Map Text (ReferenceOr SchemaObject)
     prunedApi :: OpenAPI
     (prunedApi, env)
-      = fmap Map.fromList
-      . over (_2 . mapped . _2) Concrete
+      = fmap (Map.fromList . over (mapped . _2) Concrete)
       . runWriter
       $ gatherAndPrune api
 

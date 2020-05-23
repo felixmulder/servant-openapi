@@ -1,13 +1,11 @@
 module OpenAPI
-  ( -- * Type classes for schemas
+  ( -- * Type class for schemas
   ToOpenAPISchema(..)
-  -- ** Generic schema class
-  , GToOpenAPI(..)
-  -- *** Generic class configuration
+  -- ** Generic deriving configuration
   , GenericSchemaOptions(..)
   , SumEncoding(..)
   , defaultSchemaOptions
-  -- *** Entrypoint function for schema deriving
+  -- ** Entrypoint function for schema deriving
   , genericToSchema
 
   -- * Handling References
@@ -15,10 +13,112 @@ module OpenAPI
   , gatherDefinitions
   , SchemaEnv
 
-  -- * Types
-  , module OpenAPI.Internal.Types
+  -- * OpenAPI types
 
-  -- * Conveniences
+  -- ** Types for datatype schemas
+  , SchemaObject(..)
+  , SchemaType(..)
+  , blankSchema
+  , blankObjectSchema
+
+  -- ** OpenAPI object type
+  , OpenAPI(..)
+  -- *** OpenAPI object field lenses
+  , apiInfo
+  , apiServers
+  , apiPaths
+  , apiComponents
+  , apiSecurity
+  , apiTags
+  , apiExternalDocs
+
+  , allOperationsMay
+  , allOperations
+  , mapOperations
+
+  -- ** Components Object
+  , ComponentsObject(..)
+  , emptyComponents
+
+  -- ** Types for references and abstraction over referencing
+  , ReferenceOr(..)
+  , ReferenceObject(..)
+
+  -- ** Types for endpoint data
+  , PathsObject
+  , PathPattern(..)
+  , PathItemObject(..)
+  , PathPatternPiece(..)
+
+  , pathPatternFromText
+  , pathPatternToText
+
+  -- ** Types for parameters
+  , ParameterObject(..)
+  , ParameterIn(..)
+  , StyleValue(..)
+
+  -- ** Types for HTTP verbs
+  , OperationObject(..)
+
+  , RequestBodyObject(..)
+
+  , HeaderObject(..)
+
+  , ResponseObject(..)
+  , ResponsesObject(..)
+
+  , MediaType(..)
+  , MediaTypeObject(..)
+
+  -- ** Info Object
+  , InfoObject(..)
+  -- *** Info object lenses
+  , infoTitle
+  , infoDescription
+  , infoTermsOfService
+  , infoContact
+  , infoLicense
+  , infoVersion
+
+  -- ** Server Object
+  , ServerObject(..)
+
+  -- *** Server object lenses
+  , serverUrl
+  , serverDescription
+
+  , ServerVariableObject(..)
+
+  -- ** Tag object
+  , TagObject(..)
+  -- *** Tag object lenses
+  , tagName
+  , tagDescription
+  , tagExternalDocs
+
+  -- ** External documentation object
+  , ExternalDocumentationObject(..)
+  -- *** External documentation object lenses
+  , externalDocsUrl
+  , externalDocsDescription
+
+  -- ** License object
+  , LicenseObject(..)
+  -- *** License object lenses
+  , licenseName
+  , licenseUrl
+
+  -- ** Contact object
+  , ContactObject(..)
+  -- *** Contact object lenses
+  , contactName
+  , contactUrl
+  , contactEmail
+
+  , SecurityRequirementObject(..)
+
+  -- * Rendering conveniences
   , renderSchemaYaml
   , renderSchemaJson
   , writeSchemaYaml
