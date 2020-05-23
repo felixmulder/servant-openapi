@@ -376,3 +376,21 @@ fromAesonSumEncoding = \case
   Aeson.UntaggedValue -> SupportedOptions $ Untagged
   Aeson.ObjectWithSingleField -> UnsupportedObjectWithSingleField
   Aeson.TwoElemArray -> UnsupportedTwoElemArray
+
+instance (ToOpenAPISchema a, KnownSymbol field)
+  => ToOpenAPISchema (SingleFieldObject field a) where
+  toSchema Proxy =
+    blankObjectSchema
+      { properties = Just . Properties $
+          Map.singleton
+            (textVal $ Proxy @field)
+            (Concrete $ set #title Nothing baseSchema)
+      , title = view #title baseSchema
+      }
+
+    where
+      baseSchema = toSchema $ Proxy @a
+
+
+textVal :: KnownSymbol s => Proxy s -> Text
+textVal = T.pack . symbolVal
