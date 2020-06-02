@@ -76,6 +76,7 @@ library
     , aeson-deriving            >= 0.1      && < 0.2
     , base                      >= 4.9      && < 5
     , containers                >= 0.6      && < 0.7
+    , hedgehog                  >= 0.6      && < 1.1
     , unordered-containers
     , generic-lens              >= 1.0      && < 2.1
     , lens                      >= 4.17     && < 4.19
@@ -141,7 +142,9 @@ test-suite servant-openapi-tests
 
     , aeson                     >= 1.4  && < 1.5
     , aeson-deriving            >= 0.1  && < 0.2
+    , containers                >= 0.6      && < 0.7
     , openapi
+    , lens                      >= 4.17     && < 4.19
     , servant-openapi
     , base                      >= 4.9  && < 5
     , bytestring                >= 0.10 && < 0.11

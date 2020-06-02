@@ -17,7 +17,7 @@ import           Data.Function        ((&))
 import           Data.Functor         ((<&>))
 import           Data.Generics.Labels ()
 import           Data.Map.Strict      (Map)
-import           Data.String          (IsString)
+import           Data.String          (IsString(..))
 import           Data.Text            (Text)
 import qualified Data.Text            as Text
 import           GHC.Generics         (Generic (..))
@@ -289,6 +289,10 @@ data PathPatternPiece
   | PathPart Text
     -- ^ A subpart of the path
   deriving stock (Generic, Show, Eq, Ord)
+
+instance IsString PathPattern where
+  fromString = pathPatternFromText' . Text.pack
+
 
 data PathItemObject = PathItemObject
   { summary ::  Maybe Text
