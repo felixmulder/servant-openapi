@@ -837,10 +837,10 @@ data SchemaObject = SchemaObject
   deriving stock (Generic, Show, Eq)
   deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts SchemaObject
 
-blankSchema :: SchemaType -> SchemaObject
-blankSchema ty = SchemaObject
+blank :: SchemaObject
+blank = SchemaObject
   { title = Nothing
-  , type_ = Just ty
+  , type_ = Nothing
   , discriminator = Nothing
   , multipleOf = Nothing
   , maximum = Nothing
@@ -868,6 +868,9 @@ blankSchema ty = SchemaObject
   , format = Nothing
   , default_ = Nothing
   }
+
+blankSchema :: SchemaType -> SchemaObject
+blankSchema ty = blank {type_ = Just ty}
 
 blankObjectSchema :: SchemaObject
 blankObjectSchema = blankSchema Object

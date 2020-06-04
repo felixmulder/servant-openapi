@@ -14,6 +14,7 @@ import           Data.Int
 import           Data.Kind              (Type)
 import           Data.List.NonEmpty     (NonEmpty)
 import qualified Data.Map.Strict        as Map
+import qualified Data.HashMap.Strict    as HashMap
 import           Data.Proxy
 import           Data.Text              (Text)
 import qualified Data.Text              as T
@@ -396,6 +397,36 @@ instance (ToOpenAPISchema a, KnownSymbol field)
     where
       baseSchema = toSchema $ Proxy @a
 
+instance (ToOpenAPISchema a, KnownJSONObject obj)
+  => ToOpenAPISchema (WithConstantFieldsOut obj a) where
+    toSchema Proxy
+      = over (#properties) addConstantProperties
+      . toSchema
+      $ Proxy @a
+
+      where
+        addConstantProperties :: Maybe Properties -> Maybe Properties
+        addConstantProperties
+          = foldl (.) id $
+            (HashMap.toList . objectVal $ Proxy @obj) <&> \(fieldName, val) ->
+              addToProperties fieldName (valToSchema val)
+
+
+valToSchema :: Aeson.Value -> SchemaObject
+valToSchema = \case
+  Aeson.String txt -> (blankSchema String) {enum = Just [txt]}
+  Aeson.Bool _ -> blankSchema Boolean
+  Aeson.Null -> blankSchema Null
+  Aeson.Array _ -> (blankSchema Array) {items = Just $ Concrete blank}
+  Aeson.Object hm -> blankObjectSchema
+    { properties
+      = Just
+      . Properties
+      . Map.fromList
+      . over (mapped . _2) (Concrete . valToSchema)
+      $ HashMap.toList hm
+    }
+  Aeson.Number _ -> blankSchema Number
 
 textVal :: KnownSymbol s => Proxy s -> Text
 textVal = T.pack . symbolVal
