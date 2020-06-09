@@ -9,10 +9,7 @@ module OpenAPI
   , genericToSchema
 
   -- * Handling References
-  , defineAndPruneAll
-  , defineAndPrune
-  , pruneSchema
-  , DefinitionEnv(..)
+  , pruneAndReference
 
   -- * OpenAPI types
 

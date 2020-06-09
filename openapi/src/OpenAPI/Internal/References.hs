@@ -67,9 +67,9 @@ pruneAndReference api =
       . flip runAccum mempty
       $ defineAndPruneAll api
 
--- | Traverse over all schemas in the 'OpenAPI' applying 'prune'.
+-- | Traverse over all schemas in the 'OpenAPI' applying 'defineAndPruneSchema'.
 defineAndPruneAll :: OpenAPI -> Accum DefinitionEnv OpenAPI
-defineAndPruneAll = allPathItems . allOperations . operationSchemas $ defineAndPrune
+defineAndPruneAll = allPathItems . allOperations . operationSchemas $ defineAndPruneSchema
 
 
 localRefPrefix :: Text
@@ -78,8 +78,8 @@ localRefPrefix = "#/components/schemas/"
 -- | Add the present schema, along with all named schemas that occur
 --   nested within it, in referenced form.
 --   Defined as a Kleisli arrow so that it can be lifted with 'Traversal''.
-defineAndPrune :: ReferenceOr SchemaObject -> Accum DefinitionEnv (ReferenceOr SchemaObject)
-defineAndPrune = \case
+defineAndPruneSchema :: ReferenceOr SchemaObject -> Accum DefinitionEnv (ReferenceOr SchemaObject)
+defineAndPruneSchema = \case
   Ref r -> pure (Ref r)
   Concrete s -> case view #title s of
     Nothing -> pure (Concrete s)
@@ -92,7 +92,7 @@ defineAndPrune = \case
           -- Though we are not done with the present schema, we guard against recursing
           -- into the same definition again by adding it to the 'ongoing' list first
           add $ newOngoing name
-          referencedSchema <- nestedSchemas defineAndPrune s
+          referencedSchema <- nestedSchemas defineAndPruneSchema s
           add $ newDefinition name referencedSchema
 
 pruneSchema :: SchemaObject -> SchemaObject
