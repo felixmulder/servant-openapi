@@ -451,6 +451,26 @@ instance (ToOpenAPISchema a, KnownJSONObject obj)
             (HashMap.toList . objectVal $ Proxy @obj) <&> \(fieldName, val) ->
               addToProperties fieldName (valToSchema val)
 
+instance (ToOpenAPISchema a, KnownJSONObject obj)
+  => ToOpenAPISchema (WithConstantFieldsIn obj a) where
+    toSchema Proxy
+      = over (#required) setRequired
+      . toSchema
+      $ Proxy @(WithConstantFieldsOut obj a)
+
+      where
+        extraObjKeys = HashMap.keys . objectVal $ Proxy @obj
+
+        setRequired :: Maybe [Text] -> Maybe [Text]
+        setRequired = Just . maybe extraObjKeys (extraObjKeys <>)
+
+-- Will replace this third newtype with a type synonym in a future release of aeson-deriving.
+instance (ToOpenAPISchema a, KnownJSONObject obj)
+  => ToOpenAPISchema (WithConstantFields obj a) where
+    toSchema Proxy = toSchema $
+      Proxy @(WithConstantFieldsIn obj (WithConstantFieldsOut obj a))
+
+
 arraySchema :: SchemaObject -> SchemaObject
 arraySchema elementSchema = (blankSchema Array) {items = Just $ Concrete elementSchema}
 
