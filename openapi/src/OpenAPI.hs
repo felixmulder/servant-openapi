@@ -10,6 +10,7 @@ module OpenAPI
 
   -- * Handling References
   , pruneAndReference
+  , pruneSchema
 
   -- * OpenAPI types
 
