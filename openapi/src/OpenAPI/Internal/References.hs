@@ -17,6 +17,101 @@ import           OpenAPI.Internal.Types
 import           GHC.Generics
 import           Control.Monad (unless)
 
+-- | Add all named schemas to the '#components' environment, and replace
+--   their occurrences with references.
+pruneAndReference :: OpenAPI -> OpenAPI
+pruneAndReference api = addEnv env prunedApi
+  where
+    env :: Map Text (ReferenceOr SchemaObject)
+    prunedApi :: OpenAPI
+    (prunedApi, env)
+      = fmap (fmap Concrete . definitions)
+      . flip runAccum mempty
+      $ defineAndPrune api
+
+-- | Traverse over all schemas in the 'OpenAPI' applying 'defineAndPruneSchema'.
+defineAndPrune :: OpenAPI -> Accum DefinitionEnv OpenAPI
+defineAndPrune = allPathItems . allOperations . operationSchemas $ defineAndPruneSchema
+
+allPathItems :: Traversal' OpenAPI PathItemObject
+allPathItems = #paths . traverse
+
+-- | Add the given environment of schema definitions to an 'OpenAPI'.
+addEnv :: Map Text (ReferenceOr SchemaObject) -> OpenAPI -> OpenAPI
+addEnv env = over #components . (Just .) $
+  maybe
+    (set #schemas (Just env) emptyComponents)
+    (over #schemas $ maybe (Just env) (Just . (env <>)))
+
+-- | The data we keep track of while traversing the schemas in an OpenAPI.
+--   It accumulates a set of schema definitions indexed by name.
+--   The monoidal property is important for its use in the 'Accum' monad.
+data DefinitionEnv = DefinitionEnv
+  { definitions :: Map Text SchemaObject
+  -- ^ The environment of definitions we are accumulating.
+  , seen :: Set Text
+  -- ^ A running list of names that have been seen. A guard against unbounded recursion
+  --   in the presence of schemas with recursive self-references (direct or indirect).
+  } deriving stock (Show, Eq, Generic)
+
+instance Semigroup DefinitionEnv where
+    d1 <> d2 = DefinitionEnv
+      { definitions = definitions d1 <> definitions d2
+      , seen = seen d1 <> seen d2
+      }
+instance Monoid DefinitionEnv where
+    mempty = DefinitionEnv mempty mempty
+
+
+-- | This prefix in a 'ReferenceObject' indicates to look in the indicated subobject of
+--   the 'OpenAPI' for the referenced item.
+localRefPrefix :: Text
+localRefPrefix = "#/components/schemas/"
+
+newDefinition :: Text -> SchemaObject -> DefinitionEnv
+newDefinition name schema = DefinitionEnv (Map.singleton name schema) mempty
+
+newSeenName :: Text -> DefinitionEnv
+newSeenName name = DefinitionEnv mempty $ Set.singleton name
+
+lookupDefinition :: Text -> DefinitionEnv -> Maybe SchemaObject
+lookupDefinition name DefinitionEnv{definitions} =
+  definitions Map.!? (localRefPrefix <> name)
+
+
+-- | Add the present schema, along with all named schemas that occur
+--   nested within it, in referenced form.
+--   Defined as a Kleisli arrow so that it can be lifted with 'Traversal''.
+defineAndPruneSchema :: ReferenceOr SchemaObject -> Accum DefinitionEnv (ReferenceOr SchemaObject)
+defineAndPruneSchema = \case
+  Ref r -> pure (Ref r)
+  Concrete s -> case view #title s of
+    Nothing -> do
+        referencedSchema <- nestedSchemas defineAndPruneSchema s
+        pure $ Concrete referencedSchema
+    Just name -> do
+      env <- look
+      -- Always return the reference, regardless of other actions from this point
+      toReference name <$ case lookupDefinition name env of
+        Just _envSchema -> pure ()
+        Nothing -> unless (name `Set.member` seen env) $ do
+          -- Though we are not done with the present schema, we guard against recursing
+          -- into the same definition again by adding it to the 'seen' list first
+          add $ newSeenName name
+          referencedSchema <- nestedSchemas defineAndPruneSchema s
+          add $ newDefinition name referencedSchema
+
+pruneSchema :: SchemaObject -> SchemaObject
+pruneSchema = over nestedSchemas $ \case
+  Ref n -> Ref n
+  Concrete s -> case view #title s of
+    Nothing -> Concrete s
+    Just name -> toReference name
+
+toReference :: Text -> ReferenceOr a
+toReference name = Ref . ReferenceObject $ localRefPrefix <> name
+
+
 nestedSchemas :: Traversal' SchemaObject (ReferenceOr SchemaObject)
 nestedSchemas f SchemaObject{..} =
   SchemaObject
@@ -48,85 +143,6 @@ nestedSchemas f SchemaObject{..} =
     <*> pure description
     <*> pure format
     <*> pure default_
-
-
--- | Add all named schemas to the '#components' environment, and replace
---   their occurrences with references.
-pruneAndReference :: OpenAPI -> OpenAPI
-pruneAndReference api =
-  prunedApi
-    { components = Just
-        emptyComponents
-          { schemas = Just env }
-    }
-  where
-    env :: Map Text (ReferenceOr SchemaObject)
-    prunedApi :: OpenAPI
-    (prunedApi, env)
-      = fmap (fmap Concrete . definitions)
-      . flip runAccum mempty
-      $ defineAndPruneAll api
-
--- | Traverse over all schemas in the 'OpenAPI' applying 'defineAndPruneSchema'.
-defineAndPruneAll :: OpenAPI -> Accum DefinitionEnv OpenAPI
-defineAndPruneAll = allPathItems . allOperations . operationSchemas $ defineAndPruneSchema
-
-
-localRefPrefix :: Text
-localRefPrefix = "#/components/schemas/"
-
--- | Add the present schema, along with all named schemas that occur
---   nested within it, in referenced form.
---   Defined as a Kleisli arrow so that it can be lifted with 'Traversal''.
-defineAndPruneSchema :: ReferenceOr SchemaObject -> Accum DefinitionEnv (ReferenceOr SchemaObject)
-defineAndPruneSchema = \case
-  Ref r -> pure (Ref r)
-  Concrete s -> case view #title s of
-    Nothing -> pure (Concrete s)
-    Just name -> do
-      env <- look
-      -- Always return the reference, regardless of other actions from this point
-      toReference name <$ case lookupDefinition name env of
-        Just _envSchema -> pure ()
-        Nothing -> unless (name `Set.member` ongoing env) $ do
-          -- Though we are not done with the present schema, we guard against recursing
-          -- into the same definition again by adding it to the 'ongoing' list first
-          add $ newOngoing name
-          referencedSchema <- nestedSchemas defineAndPruneSchema s
-          add $ newDefinition name referencedSchema
-
-pruneSchema :: SchemaObject -> SchemaObject
-pruneSchema = over nestedSchemas $ \case
-  Ref n -> Ref n
-  Concrete s -> case view #title s of
-    Nothing -> Concrete s
-    Just name -> toReference name
-
-toReference :: Text -> ReferenceOr a
-toReference name = Ref . ReferenceObject $ localRefPrefix <> name
-
-lookupDefinition :: Text -> DefinitionEnv -> Maybe SchemaObject
-lookupDefinition name DefinitionEnv{definitions} =
-  definitions Map.!? (localRefPrefix <> name)
-
-newDefinition :: Text -> SchemaObject -> DefinitionEnv
-newDefinition name schema = DefinitionEnv (Map.singleton name schema) mempty
-
-newOngoing :: Text -> DefinitionEnv
-newOngoing name = DefinitionEnv mempty $ Set.singleton name
-
-data DefinitionEnv = DefinitionEnv
-  { definitions :: Map Text SchemaObject
-  , ongoing :: Set Text
-  } deriving stock (Show, Eq, Generic)
-
-instance Semigroup DefinitionEnv where
-    d1 <> d2 = DefinitionEnv
-      { definitions = definitions d1 <> definitions d2
-      , ongoing = ongoing d1 <> ongoing d2
-      }
-instance Monoid DefinitionEnv where
-    mempty = DefinitionEnv mempty mempty
 
 
 -- | Traversal over nested schemas from 'OperationObject':
@@ -170,10 +186,6 @@ operationSchemas f OperationObject{..} =
       . traverse
       . #schema
       . _Just
-
-
-allPathItems :: Traversal' OpenAPI PathItemObject
-allPathItems = #paths . traverse
 
 -- | Traversal over nested schemas from the 'ResponseObject':
 --     * 'headers'
