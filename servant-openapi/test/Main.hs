@@ -10,10 +10,9 @@ import           Data.Text                   (Text)
 import           GHC.Generics                (Generic)
 import           Hedgehog
 import           Hedgehog.Main               (defaultMain)
-import           OpenAPI.Internal.Class
-import           OpenAPI.Internal.References
 import           Servant.API
 import           Servant.OpenAPI.Internal
+import           OpenAPI
 
 main :: IO ()
 main = do
@@ -21,11 +20,11 @@ main = do
 
 prop_request_body_distributes :: Property
 prop_request_body_distributes = once . property $ do
-  toEndpointInfo (Proxy @Dog1) === toEndpointInfo (Proxy @Dog2)
-  let dog1 = toEndpointInfo (Proxy @Dog1)
-      dog2 = toEndpointInfo (Proxy @Dog2)
-      Just pathItem1 = dog1 Map.!? "/dog"
-      Just pathItem2 = dog2 Map.!? "/dog"
+  toBareOpenAPI (Proxy @Dog1) === toBareOpenAPI (Proxy @Dog2)
+  let dog1 = toBareOpenAPI (Proxy @Dog1)
+      dog2 = toBareOpenAPI (Proxy @Dog2)
+      Just pathItem1 = view #paths dog1 Map.!? "/dog"
+      Just pathItem2 = view #paths dog2 Map.!? "/dog"
   pathItem1 === pathItem2
 
 type Dog1 =
@@ -39,15 +38,16 @@ type Dog2 =
 
 prop_static_path_segments_distribute :: Property
 prop_static_path_segments_distribute = once . property $ do
-  toEndpointInfo (Proxy @Cat1) === toEndpointInfo (Proxy @Cat2)
-  let cat1 = toEndpointInfo (Proxy @Cat1)
-      cat2 = toEndpointInfo (Proxy @Cat2)
+  let cat1 = toBareOpenAPI (Proxy @Cat1)
+      cat2 = toBareOpenAPI (Proxy @Cat2)
   cat1 === cat2
-  Map.keys cat1 === ["/cat/{name}", "/cat/adopted"]
+  Map.keys (view #paths cat1) === ["/cat/{name}", "/cat/adopted"]
+  toBareOpenAPI (Proxy @Cat1) === toBareOpenAPI (Proxy @Cat2)
 
 prop_pruneAndReference_example :: Property
 prop_pruneAndReference_example = once . property $ do
-  let openApi = pruneAndReference . toBareOpenAPI $ Proxy @Cat1
+  let openApi = toBareOpenAPI $ Proxy @Cat1
+  annotateShow openApi
   openApi ^.. #components . _Just . #schemas . _Just . traverse . #_Concrete ===
       [ pruneSchema . toSchema $ Proxy @Cat
       , pruneSchema . toSchema $ Proxy @Dog
@@ -65,10 +65,10 @@ type Cat2 =
   :<|> "cat" :> "adopted" :> Get '[JSON] [Cat]
 
 
-
 data Dog = Dog
   { name :: Text
   , age :: Int
+  , sis :: Maybe Cat
   }
   deriving stock (Show, Generic)
   deriving anyclass (ToOpenAPISchema)
