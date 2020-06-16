@@ -4,7 +4,7 @@
 
 module Servant.OpenAPI.Internal where
 
-import           Control.Applicative    (liftA2, (<|>))
+import           Control.Applicative    ((<|>))
 import           Control.Lens           (Lens', mapped, over, set, view, (&), _1)
 import           Data.Functor
 import           Data.Generics.Labels   ()
@@ -37,9 +37,10 @@ data AddOpenAPIMetadata meta api
 
 instance (ToOpenAPIMetadata meta, HasOpenAPIEndpointInfo api)
   => HasOpenAPI (AddOpenAPIMetadata meta api) where
-    toOpenAPI Proxy =
-      set #paths (toEndpointInfo $ Proxy @api) $
-        toOpenAPIMetadata (Proxy @meta)
+    toOpenAPI Proxy
+      = pruneAndReference
+      . set #paths (toEndpointInfo $ Proxy @api)
+      $ toOpenAPIMetadata (Proxy @meta)
 
 -- | Create an 'OpenAPI' object from the servant-generated endpoint data by providing
 --   the bare minimum hardcoded stub values for metadata fields. See 'blankOpenAPI'.
@@ -52,6 +53,7 @@ toBareOpenAPI :: forall api. HasOpenAPIEndpointInfo api => Proxy api -> OpenAPI
 toBareOpenAPI Proxy =
   blankOpenAPI
     & set #paths (toEndpointInfo $ Proxy @api)
+    & pruneAndReference
 
 -- | Provide meaningless values for the required fields of 'InfoObject'. Consider
 --   filling in meaningful values for the required fields. Otherwise this gives:
@@ -203,9 +205,6 @@ fish x y = PathItemObject
   , servers     = view #servers x      <|> view #servers y
   , parameters  = view #parameters x   <|> view #parameters y
   }
-
-deepMappend :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a
-deepMappend f mx my = liftA2 f mx my <|> mx <|> my
 
 instance (KnownSymbol name, HasOpenAPIEndpointInfo api)
   => HasOpenAPIEndpointInfo (QueryFlag name :> api) where
