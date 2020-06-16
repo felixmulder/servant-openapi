@@ -22,11 +22,11 @@ import           Data.Text              (Text)
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy         as LazyText
 import           Data.Time              (Day, UTCTime)
+import           Data.UUID              (UUID)
 import           GHC.Generics
 import           GHC.TypeLits
 import           OpenAPI.Internal.Types
 import           Prelude                hiding (maximum, minimum, not)
-
 
 -- | Types for which we can produce a 'SchemaObject' that accurately describes the
 --   JSON serialization format.
@@ -50,9 +50,6 @@ instance ToOpenAPISchema Int64 where toSchema Proxy = (blankSchema Integer) {for
 
 instance ToOpenAPISchema Bool where toSchema Proxy = (blankSchema Boolean)
 
-instance ToOpenAPISchema UTCTime where toSchema Proxy = (blankSchema String) {format = Just "date-time"}
-instance ToOpenAPISchema Day where toSchema Proxy = (blankSchema String) {format = Just "date"}
-
 instance ToOpenAPISchema a => ToOpenAPISchema [a] where
   toSchema Proxy =
     (blankSchema Array)
@@ -62,6 +59,14 @@ instance ToOpenAPISchema a => ToOpenAPISchema (NonEmpty a) where
   toSchema Proxy =
     (toSchema $ Proxy @[a])
        {minItems = Just 1}
+
+
+------ Orphan instances ------
+
+instance ToOpenAPISchema UTCTime where toSchema Proxy = (blankSchema String) {format = Just "date-time"}
+instance ToOpenAPISchema Day where toSchema Proxy = (blankSchema String) {format = Just "date"}
+instance ToOpenAPISchema UUID where toSchema Proxy =  (blankSchema String) {format = Just "uuid"}
+
 
 ------------------------------- Configuration for deriving -------------------------------
 
