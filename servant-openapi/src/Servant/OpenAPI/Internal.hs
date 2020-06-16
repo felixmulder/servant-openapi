@@ -18,41 +18,23 @@ import           OpenAPI
 import           Servant.API            as Servant
 import           Servant.API.Modifiers
 
--- | A class for servant APIs for which the 'OpenAPI' specification can be generated.
---
---   The structural information that can be derived mechanically is in the `paths`
---   field, which is handled by the 'HasOpenAPIEndpointInfo' class. To turn that
---   into the full 'OpenAPI', either supply the extra metadata manually, or wrap your
---   API type with 'AddOpenAPIMetadata' and supply the corresponding 'ToOpenAPIMetadata'
---   instance.
-class HasOpenAPI api where
-  toOpenAPI :: Proxy api -> OpenAPI
-
--- | Class for basic metadata contained in 'OpenAPI' which cannot be derived mechanically
---   from a servant API type.
-class ToOpenAPIMetadata a where
-  toOpenAPIMetadata :: Proxy a -> OpenAPI
-
-data AddOpenAPIMetadata meta api
-
-instance (ToOpenAPIMetadata meta, HasOpenAPIEndpointInfo api)
-  => HasOpenAPI (AddOpenAPIMetadata meta api) where
-    toOpenAPI Proxy
-      = pruneAndReference
-      . set #paths (toEndpointInfo $ Proxy @api)
-      $ toOpenAPIMetadata (Proxy @meta)
+-- | Create an 'OpenAPI' object from the servant-generated endpoint data and provided
+--   'InfoObject'.
+toOpenAPI :: forall api. HasOpenAPI api => Proxy api -> InfoObject -> OpenAPI
+toOpenAPI Proxy info =
+  blankOpenAPI
+    & set #paths (toEndpointInfo $ Proxy @api)
+    & set #info info
+    & pruneAndReference
 
 -- | Create an 'OpenAPI' object from the servant-generated endpoint data by providing
 --   the bare minimum hardcoded stub values for metadata fields. See 'blankOpenAPI'.
---   In particular, the required fields are populated as follows:
---
---     * title: "Untitled API"
---
---     * version: "1.0"
-toBareOpenAPI :: forall api. HasOpenAPIEndpointInfo api => Proxy api -> OpenAPI
+--   Prefer to use 'toOpenAPI' instead for most uses.
+toBareOpenAPI :: forall api. HasOpenAPI api => Proxy api -> OpenAPI
 toBareOpenAPI Proxy =
   blankOpenAPI
     & set #paths (toEndpointInfo $ Proxy @api)
+    & set #info blankInfo
     & pruneAndReference
 
 -- | Provide meaningless values for the required fields of 'InfoObject'. Consider
@@ -92,21 +74,24 @@ unsafeMapPathPatterns f
   . over (mapped . _1) f
   . Map.toList
 
-class HasOpenAPIEndpointInfo api where
+class HasOpenAPI api where
+  -- | WARNING: The resulting value may be infinite if the types contain self-references.
+  --   This function is internal. Library users should instead use 'toOpenAPI', which
+  --   contains a call to 'pruneAndReference' that makes the resulting 'OpenAPI' finite.
   toEndpointInfo :: Proxy api -> Map PathPattern PathItemObject
 
 
 -- | The change to the 'PathsObject' may affect one or many endpoints.
-instance (KnownSymbol str, HasOpenAPIEndpointInfo api)
-  => HasOpenAPIEndpointInfo
+instance (KnownSymbol str, HasOpenAPI api)
+  => HasOpenAPI
   (str :> api) where
     toEndpointInfo Proxy =
       unsafeMapPathPatterns
         (over #unPathPattern $ (<>) [PathPart . Text.pack . symbolVal $ Proxy @str])
         (toEndpointInfo $ Proxy @api)
 
-instance (ToOpenAPISchema a, KnownSymbol name, HasOpenAPIEndpointInfo api)
-  => HasOpenAPIEndpointInfo
+instance (ToOpenAPISchema a, KnownSymbol name, HasOpenAPI api)
+  => HasOpenAPI
   (Capture name a :> api) where
     toEndpointInfo Proxy =
       unsafeMapPathPatterns
@@ -129,8 +114,8 @@ instance (ToOpenAPISchema a, KnownSymbol name, HasOpenAPIEndpointInfo api)
           , content = Nothing
           }
 
-instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasOpenAPIEndpointInfo api)
-  => HasOpenAPIEndpointInfo
+instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasOpenAPI api)
+  => HasOpenAPI
   (QueryParam' mods name a :> api) where
     toEndpointInfo Proxy =
       mapOperations (addParam param) <$> toEndpointInfo (Proxy @api)
@@ -153,8 +138,8 @@ instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasOp
           , content = Nothing
           }
 
-instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasOpenAPIEndpointInfo api)
-  => HasOpenAPIEndpointInfo
+instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasOpenAPI api)
+  => HasOpenAPI
   (Header' mods name a :> api) where
     toEndpointInfo Proxy =
       mapOperations (addParam param) <$> toEndpointInfo (Proxy @api)
@@ -177,13 +162,13 @@ instance (ToOpenAPISchema a, KnownSymbol name, SBoolI (FoldRequired mods), HasOp
           , content = Nothing
           }
 
-instance (HasOpenAPIEndpointInfo api)
-  => HasOpenAPIEndpointInfo (BasicAuth realm a :> api) where
+instance (HasOpenAPI api)
+  => HasOpenAPI (BasicAuth realm a :> api) where
     toEndpointInfo Proxy =
       toEndpointInfo (Proxy @api)
 
-instance (HasOpenAPIEndpointInfo l, HasOpenAPIEndpointInfo r)
-  => HasOpenAPIEndpointInfo
+instance (HasOpenAPI l, HasOpenAPI r)
+  => HasOpenAPI
     (l :<|> r) where
       toEndpointInfo Proxy =
         Map.unionWith fish
@@ -206,8 +191,8 @@ fish x y = PathItemObject
   , parameters  = view #parameters x   <|> view #parameters y
   }
 
-instance (KnownSymbol name, HasOpenAPIEndpointInfo api)
-  => HasOpenAPIEndpointInfo (QueryFlag name :> api) where
+instance (KnownSymbol name, HasOpenAPI api)
+  => HasOpenAPI (QueryFlag name :> api) where
     toEndpointInfo Proxy =
       mapOperations (addParam param) <$> toEndpointInfo (Proxy @api)
       where
@@ -234,10 +219,10 @@ addParam param = over #parameters $
     (\ps -> Just (Concrete param : ps))
 
 instance
-  ( HasOpenAPIEndpointInfo api
+  ( HasOpenAPI api
   , ToOpenAPISchema a
   , SBoolI (FoldLenient mods))
-  => HasOpenAPIEndpointInfo
+  => HasOpenAPI
     (ReqBody' mods contentTypes a :> api) where
       toEndpointInfo Proxy =
         mapOperations (set #requestBody . Just $ Concrete body)
@@ -258,7 +243,7 @@ instance
             }
 
 instance (v ~ Verb verb status contentTypes returned, HasOperation v, IsVerb verb)
-  => HasOpenAPIEndpointInfo
+  => HasOpenAPI
     (Verb verb status contentTypes returned) where
       toEndpointInfo Proxy =
         Map.singleton (PathPattern []) $

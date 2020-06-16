@@ -1,12 +1,8 @@
 module Servant.OpenAPI
   ( -- * Interface for generating OpenAPI definition
-    HasOpenAPI(..)
-
-  , HasOpenAPIEndpointInfo(..)
+    HasOpenAPI
+  , toOpenAPI
   , toBareOpenAPI
-
-  , ToOpenAPIMetadata
-  , AddOpenAPIMetadata
 
   , blankInfo
   , blankOpenAPI
