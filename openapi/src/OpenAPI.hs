@@ -1,6 +1,6 @@
 module OpenAPI
   ( -- * Type class for schemas
-  ToOpenAPISchema(..)
+    ToOpenAPISchema(..)
   -- ** Generic deriving configuration
   , GenericSchemaOptions(..)
   , SumEncoding(..)
