@@ -1,5 +1,5 @@
 name:
-  openapi3
+  openapi
 version:
   0.0.0.1
 synopsis:
@@ -144,7 +144,7 @@ test-suite openapi-tests
     ViewPatterns
 
   build-depends:
-      openapi3
+      openapi
 
     , aeson                     >= 1.4      && < 1.5
     , aeson-deriving            >= 0.1      && < 0.2

@@ -1,7 +1,7 @@
 resolver: lts-15.2
 
 packages:
-    - openapi3
+    - openapi
     - servant-openapi
 
 extra-deps:
