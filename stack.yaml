@@ -1,0 +1,8 @@
+resolver: lts-15.2
+
+packages:
+    - openapi3
+    - servant-openapi
+
+extra-deps:
+    - aeson-deriving-0.1.0.0

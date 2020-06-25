@@ -2,73 +2,38 @@
 --  https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.3.md
 --
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Servant.OpenAPI.Internal.Types
-  ( -- * Open API
-    OpenAPI(..)
-    -- ** OpenAPI lenses
-  , apiInfo
-  , apiServers
-  , apiPaths
-  , apiComponents
-  , apiSecurity
-  , apiTags
-  , apiExternalDocs
+{-# LANGUAGE OverloadedLabels      #-}
+{-# LANGUAGE RecordWildCards       #-}
 
-    -- * Info Object
-  , InfoObject(..)
-    -- ** Info object lenses
-  , infoTitle
-  , infoDescription
-  , infoTermsOfService
-  , infoContact
-  , infoLicense
-  , infoVersion
+module OpenAPI.Internal.Types where
 
-    -- * Server Object
-  , ServerObject(..)
-    -- ** Server object lenses
-  , serverUrl
-  , serverDescription
-
-    -- * Tag object
-  , TagObject(..)
-    -- ** Tag object lenses
-  , tagName
-  , tagDescription
-  , tagExternalDocs
-
-    -- * External documentation object
-  , ExternalDocumentationObject(..)
-    -- ** External documentation object lenses
-  , externalDocsUrl
-  , externalDocsDescription
-
-    -- * License object
-  , LicenseObject(..)
-    -- ** License object lenses
-  , licenseName
-  , licenseUrl
-
-    -- * Contact object
-  , ContactObject(..)
-    -- ** Contact object lenses
-  , contactName
-  , contactUrl
-  , contactEmail
-
-    -- * Schema object
-  , SchemaObject(..)
-  ) where
-
-import           Control.Lens.Type (Lens')
-import qualified Data.Aeson as Aeson (Value)
+import           Control.Lens         (over, _Just)
+import           Control.Lens.Type    (Lens', Traversal')
+import           Control.Monad        ((>=>))
+import           Data.Aeson           hiding (Object)
+import qualified Data.Aeson           as Aeson (Value)
+import           Data.Aeson.Deriving
+import           Data.Function        ((&))
+import           Data.Functor         ((<&>))
 import           Data.Generics.Labels ()
-import           Data.Map.Strict (Map)
-import           Data.String (IsString)
-import           Data.Text (Text)
-import           GHC.Generics (Generic)
+import           Data.Map.Strict      (Map)
+import           Data.String          (IsString(..))
+import           Data.Text            (Text)
+import qualified Data.Text            as Text
+import           GHC.Generics         (Generic (..))
+import           Prelude              hiding (head)
+
+-- Aeson encoding settings
+type PackageOpts =
+  '[ FieldLabelModifier :=
+      [ SnakeCase
+      , DropSuffix "_"  -- haskell keyworks suffixed with '_': type_, in_, default_
+      ]
+  , OmitNothingFields := 'True
+  ]
+
+type LowercaseEnum = '[ ConstructorTagModifier := Lowercase ]
+
 
 data OpenAPI = OpenAPI
   { openapi :: Text
@@ -86,7 +51,7 @@ data OpenAPI = OpenAPI
     --   @/@.
   , paths :: Map PathPattern PathItemObject
     -- ^ The available paths and operations for the API
-  , compontents :: Maybe ComponentsObject
+  , components :: Maybe ComponentsObject
     -- ^ An element to hold various schemas for the specification
   , security :: Maybe [SecurityRequirementObject]
     -- ^ A declaration of which security mechanisms can be used across the API.
@@ -104,7 +69,8 @@ data OpenAPI = OpenAPI
   , externalDocs :: Maybe ExternalDocumentationObject
     -- ^ Additional external documentation
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts OpenAPI
 
 apiInfo :: Lens' OpenAPI InfoObject
 apiInfo = #info
@@ -116,7 +82,7 @@ apiPaths :: Lens' OpenAPI (Map PathPattern PathItemObject)
 apiPaths = #paths
 
 apiComponents :: Lens' OpenAPI (Maybe ComponentsObject)
-apiComponents = #compontents
+apiComponents = #components
 
 apiSecurity :: Lens' OpenAPI (Maybe [SecurityRequirementObject])
 apiSecurity = #security
@@ -126,6 +92,10 @@ apiTags = #tags
 
 apiExternalDocs :: Lens' OpenAPI (Maybe ExternalDocumentationObject)
 apiExternalDocs = #externalDocs
+
+
+type PathsObject = Map PathPattern PathItemObject
+
 
 data InfoObject = InfoObject
   { title :: Text
@@ -144,7 +114,8 @@ data InfoObject = InfoObject
     -- ^ The version of the OpenAPI document (which is distinct from the
     --   OpenAPI Specification version or the API implementation version)
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts InfoObject
 
 infoTitle :: Lens' InfoObject Text
 infoTitle = #title
@@ -177,7 +148,8 @@ data ServerObject = ServerObject
     -- ^ A map between a variable name and its value. The value is used for
     --   substitution in the server's URL template.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ServerObject
 
 serverUrl :: Lens' ServerObject Text
 serverUrl = #url
@@ -199,7 +171,8 @@ data ServerVariableObject = ServerVariableObject
     -- ^ An optional description for the server variable. CommonMark syntax MAY
     --   be used for rich text representation.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ServerVariableObject
 
 data TagObject = TagObject
   { name :: Text
@@ -210,7 +183,8 @@ data TagObject = TagObject
   , externalDocs :: Maybe ExternalDocumentationObject
     -- ^ Additional external documentation for this tag
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts TagObject
 
 tagName :: Lens' TagObject Text
 tagName = #name
@@ -229,7 +203,8 @@ data ExternalDocumentationObject = ExternalDocumentationObject
     -- ^ The URL for the target documentation. Value MUST be in the format of a
     --   URL
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ExternalDocumentationObject
 
 externalDocsUrl :: Lens' ExternalDocumentationObject Text
 externalDocsUrl = #url
@@ -243,7 +218,8 @@ data LicenseObject = LicenseObject
   , url :: Maybe Text
     -- ^ A URL to the license used for the API. MUST be in the format of a URL
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts LicenseObject
 
 licenseName :: Lens' LicenseObject Text
 licenseName = #name
@@ -261,7 +237,8 @@ data ContactObject = ContactObject
     -- ^ The email address of the contact person/organization. MUST be in the
     --   format of an email address
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ContactObject
 
 contactName :: Lens' ContactObject (Maybe Text)
 contactName = #name
@@ -272,26 +249,53 @@ contactUrl = #url
 contactEmail :: Lens' ContactObject (Maybe Text)
 contactEmail = #email
 
-data SecurityRequirementObject
-  deriving stock (Generic)
+data SecurityRequirementObject = SecurityRequirementObject -- FIXME
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts SecurityRequirementObject
 
-data PathPattern
+newtype PathPattern' = PathPattern' Text
+  deriving stock (Generic, Show, Eq, Ord)
+  deriving newtype (IsString, ToJSON, FromJSON, ToJSONKey, FromJSONKey)
+
+newtype PathPattern = PathPattern {unPathPattern :: [PathPatternPiece]}
+  deriving stock (Generic, Show, Eq, Ord)
+
+instance FromJSON PathPattern where parseJSON = withText "String" $ either fail pure . pathPatternFromText
+instance ToJSON PathPattern where toJSON = Data.Aeson.String . pathPatternToText
+instance ToJSONKey PathPattern
+instance FromJSONKey PathPattern where fromJSONKey = FromJSONKeyText pathPatternFromText'
+
+pathPatternFromText :: Text -> Either String PathPattern
+pathPatternFromText path = case Text.uncons path of
+  Just ('/', rest) -> Right . PathPattern $ (Text.splitOn "/" rest) <&> \pathPiece ->
+    maybe (PathPart pathPiece) PathVariable $
+      Text.stripPrefix "{" >=> Text.stripSuffix "}" $ pathPiece
+  _ -> Left "PathPattern must start with a '/'"
+
+pathPatternFromText' :: Text -> PathPattern
+pathPatternFromText' path = PathPattern $ (dropWhile (=="") $ Text.splitOn "/" path) <&> \pathPiece ->
+    maybe (PathPart pathPiece) PathVariable $
+      Text.stripPrefix "{" >=> Text.stripSuffix "}" $ pathPiece
+-- TODO: test partial isomorphism
+pathPatternToText :: PathPattern -> Text
+pathPatternToText (PathPattern []) = "/"
+pathPatternToText (PathPattern xs) = xs & foldMap \case
+  PathVariable v -> "/{" <> v <> "}"
+  PathPart v -> "/" <> v
+
+data PathPatternPiece
   = PathVariable Text
     -- ^ A variable in the path
   | PathPart Text
     -- ^ A subpart of the path
-  | PathNil
-    -- ^ End of path
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq, Ord)
+
+instance IsString PathPattern where
+  fromString = pathPatternFromText' . Text.pack
+
 
 data PathItemObject = PathItemObject
-  { ref :: Maybe Text
-    -- ^ Allows for an external definition of this path item
-    --
-    --   The referenced structure MUST be in the format of a Path Item Object.
-    --   In case a Path Item Object field appears both in the defined object
-    --   and the referenced object, the behavior is undefined.
-  , summary ::  Maybe Text
+  { summary ::  Maybe Text
     -- ^ An optional, string summary, intended to apply to all operations in
     --   this path.
   , description :: Maybe Text
@@ -315,7 +319,7 @@ data PathItemObject = PathItemObject
     -- ^ A definition of a TRACE operation on this path
   , servers :: Maybe [ServerObject]
     -- ^ An alternative server array to service all operations in this path.
-  , parameters :: [Either ParameterObject ReferenceObject]
+  , parameters :: Maybe [ReferenceOr ParameterObject]
     -- ^ A list of parameters that are applicable for all the operations
     --   described under this path. These parameters can be overridden at the
     --   operation level, but cannot be removed there. The list MUST NOT
@@ -323,8 +327,36 @@ data PathItemObject = PathItemObject
     --   combination of a name and location. The list can use the Reference
     --   Object to link to parameters that are defined at the OpenAPI Object's
     --   components/parameters.
+    --
+    --   NOTE: we take the approach of putting parameters into the inner 'OperationObject's
+    --   because otherwise interpreting :<|> would give incorrect results.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts PathItemObject
+
+
+allOperationsMay :: Traversal' PathItemObject (Maybe OperationObject)
+allOperationsMay f PathItemObject{..} =
+  PathItemObject
+    <$> pure summary
+    <*> pure description
+    <*> f get
+    <*> f put
+    <*> f post
+    <*> f delete
+    <*> f options
+    <*> f head
+    <*> f patch
+    <*> f trace
+    <*> pure servers
+    <*> pure parameters
+
+allOperations :: Traversal' PathItemObject OperationObject
+allOperations = allOperationsMay . _Just
+
+mapOperations :: (OperationObject -> OperationObject) -> PathItemObject -> PathItemObject
+mapOperations = over allOperations
+
 
 data OperationObject = OperationObject
   { tags :: Maybe [Text]
@@ -343,14 +375,14 @@ data OperationObject = OperationObject
     --   case-sensitive. Tools and libraries MAY use the operationId to uniquely
     --   identify an operation, therefore, it is RECOMMENDED to follow common
     --   programming naming conventions.
-  , parameters :: Maybe [Either ParameterObject ReferenceObject]
+  , parameters :: Maybe [ReferenceOr ParameterObject]
     -- ^ A list of parameters that are applicable for this operation. If a
     --   parameter is already defined at the Path Item, the new definition will
     --   override it but can never remove it. The list MUST NOT include duplicated
     --   parameters. A unique parameter is defined by a combination of a name and
     --   location. The list can use the Reference Object to link to parameters that
     --   are defined at the OpenAPI Object's components/parameters.
-  , requestBody :: Maybe (Either ReferenceObject RequestBodyObject)
+  , requestBody :: Maybe (ReferenceOr RequestBodyObject)
     -- ^ The request body applicable for this operation. The requestBody is only
     --   supported in HTTP methods where the HTTP 1.1 specification RFC7231 has
     --   explicitly defined semantics for request bodies. In other cases where the
@@ -379,48 +411,75 @@ data OperationObject = OperationObject
     --   server object is specified at the Path Item Object or Root level, it will
     --   be overridden by this value.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts OperationObject
 
 data ComponentsObject = ComponentsObject
-  { schemas :: [ReferenceOr SchemaObject]
+  { schemas         :: Maybe (Map Text (ReferenceOr SchemaObject))
     -- ^ An object to hold reusable Schema Objects
-  , responses :: [ReferenceOr ResponseObject]
+  , responses       :: Maybe (Map Text (ReferenceOr ResponseObject))
     -- ^ An object to hold reusable Response Objects
-  , parameters :: [ReferenceOr ParameterObject]
+  , parameters      :: Maybe (Map Text (ReferenceOr ParameterObject))
     -- ^ An object to hold reusable Parameter Objects
-  , examples :: [ReferenceOr ExampleObject]
+  , examples        :: Maybe (Map Text (ReferenceOr ExampleObject))
     -- ^ An object to hold reusable Example Objects
-  , requestBodies :: [ReferenceOr RequestBodyObject]
+  , requestBodies   :: Maybe (Map Text (ReferenceOr RequestBodyObject))
     -- ^ An object to hold reusable Request Body Objects
-  , headers :: [ReferenceOr HeaderObject]
+  , headers         :: Maybe (Map Text (ReferenceOr HeaderObject))
     -- ^ An object to hold reusable Header Objects
-  , securitySchemes :: [ReferenceOr SecuritySchemeObject]
+  , securitySchemes :: Maybe (Map Text (ReferenceOr SecuritySchemeObject))
     -- ^ An object to hold reusable Security Scheme Objects
-  , links :: [ReferenceOr LinkObject]
+  , links           :: Maybe (Map Text (ReferenceOr LinkObject))
     -- ^ An object to hold reusable Link Objects
-  , callbacks :: [ReferenceOr CallbackObject]
+  , callbacks       :: Maybe (Map Text (ReferenceOr CallbackObject))
     -- ^ An object to hold reusable Callback Objects
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ComponentsObject
+
+emptyComponents :: ComponentsObject
+emptyComponents = ComponentsObject
+  { schemas = Nothing
+  , responses = Nothing
+  , parameters = Nothing
+  , examples = Nothing
+  , requestBodies = Nothing
+  , headers = Nothing
+  , securitySchemes = Nothing
+  , links = Nothing
+  , callbacks = Nothing
+  }
 
 -- | An object containing a @$ref@ field
-data ReferenceObject = ReferenceObject { ref :: Text }
-  deriving stock (Generic)
+newtype ReferenceObject = ReferenceObject { ref :: Text }
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via
+    GenericEncoded
+      '[FieldLabelModifier := ("ref" ==> "$ref")]
+      ReferenceObject
 
+-- | A Functor that signifies the inner type may appear directly or through a reference.
 data ReferenceOr a
-  = Reference Text ReferenceObject
-  | Or Text a
-  deriving stock (Generic)
+  -- | The enclosed reference must be followed to obtain the value
+  = Ref ReferenceObject
+  -- | The value is directly present.
+  | Concrete a
+  deriving stock (Generic, Show, Eq)
+
+deriving via GenericEncoded '[SumEncoding := UntaggedValue] (ReferenceOr a)
+  instance FromJSON a => FromJSON (ReferenceOr a)
+deriving via GenericEncoded '[SumEncoding := UntaggedValue] (ReferenceOr a)
+  instance ToJSON a => ToJSON (ReferenceOr a)
 
 data ResponseObject = ResponseObject
   { description :: Text
     -- ^ A short description of the response. CommonMark syntax MAY be used for
     --   rich text representation.
-  , headers :: Maybe [ReferenceOr HeaderObject]
+  , headers :: Maybe (Map Text (ReferenceOr HeaderObject))
     -- ^ Maps a header name to its definition. RFC7230 states header names are
     --   case insensitive. If a response header is defined with the name
     --   "Content-Type", it SHALL be ignored.
-  , content :: Maybe (Map Text MediaTypeObject)
+  , content :: Maybe (Map MediaType MediaTypeObject)
     -- ^ A map containing descriptions of potential response payloads. The key is
     --   a media type or media type range and the value describes it. For responses
     --   that match multiple keys, only the most specific key is applicable. e.g.
@@ -430,7 +489,8 @@ data ResponseObject = ResponseObject
     --   key of the map is a short name for the link, following the naming
     --   constraints of the names for Component Objects.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ResponseObject
 
 data ParameterObject = ParameterObject
   { name :: Text
@@ -481,7 +541,7 @@ data ParameterObject = ParameterObject
     --   as defined by RFC3986 @:/?#[]@!$&'()*+,;=@ to be included without
     --   percent-encoding. This property only applies to parameters with an in
     --   value of query. The default value is false.
-  , schema :: Maybe (Either ReferenceObject SchemaObject)
+  , schema :: Maybe (ReferenceOr SchemaObject)
     -- ^ The schema defining the type used for the parameter.
   , example :: Maybe Aeson.Value
     -- ^ Example of the parameter's potential value. The example SHOULD match
@@ -497,12 +557,13 @@ data ParameterObject = ParameterObject
   --   The examples field is mutually exclusive of the example field.
   --   Furthermore, if referencing a schema that contains an example, the
   --   examples value SHALL override the example provided by the schema.
-  , content :: Maybe (Map Text MediaTypeObject)
+  , content :: Maybe (Map MediaType MediaTypeObject)
   -- ^ A map containing the representations for the parameter. The key is the
   --   media type and the value describes it. The map MUST only contain one
   --   entry.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ParameterObject
 
 -- | The @in@ field as an enum
 data ParameterIn
@@ -510,7 +571,8 @@ data ParameterIn
   | Header
   | Path
   | Cookie
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded LowercaseEnum ParameterIn
 
 data StyleValue
   = Matrix
@@ -533,7 +595,8 @@ data StyleValue
   | DeepObject
     -- ^ Provides a simple way of rendering nested objects using form
     --   parameters.
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded LowercaseEnum StyleValue
 
 data ExampleObject = ExampleObject
   { summary :: Maybe Text
@@ -556,13 +619,14 @@ data ExampleObject = ExampleObject
     --   be included in JSON or YAML documents. The 'value' field and
     --   'externalValue' field are mutually exclusive.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ExampleObject
 
 data RequestBodyObject = RequestBodyObject
   { description :: Maybe Text
     -- ^ A brief description of the request body. This could contain examples
     --   of use. CommonMark syntax MAY be used for rich text representation.
-  , content :: Map Text MediaTypeObject
+  , content :: Map MediaType MediaTypeObject
     -- ^ The content of the request body. The key is a media type or media type
     --   range and the value describes it. For requests that match multiple keys,
     --   only the most specific key is applicable. e.g. text/plain overrides
@@ -571,7 +635,8 @@ data RequestBodyObject = RequestBodyObject
     -- ^ Determines if the request body is required in the request. Defaults to
     --   false
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts RequestBodyObject
 
 data HeaderObject = HeaderObject
   { description :: Maybe Text
@@ -590,7 +655,7 @@ data HeaderObject = HeaderObject
     --   separate parameters for each value of the array or key-value pair of the
     --   map. For other types of parameters this property has no effect. The
     --   default value is false.
-  , schema :: Maybe SchemaOrReference
+  , schema :: Maybe (ReferenceOr SchemaObject)
     -- ^ The schema defining the type used for the parameter.
   , example :: Maybe Aeson.Value
     -- ^ Example of the parameter's potential value. The example SHOULD match
@@ -607,7 +672,8 @@ data HeaderObject = HeaderObject
   --   Furthermore, if referencing a schema that contains an example, the
   --   examples value SHALL override the example provided by the schema.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts HeaderObject
 
 data SecuritySchemeObject = SecuritySchemeObject
   { type_ :: SecuritySchemaType
@@ -649,10 +715,16 @@ data SecuritySchemeObject = SecuritySchemeObject
     --
     --   /Note:/ Required when @type_ == "openIdConnect"@
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts SecuritySchemeObject
 
 newtype SecuritySchemaType = SecuritySchemaType Text
-  deriving newtype (IsString)
+  deriving stock (Generic, Show, Eq)
+  deriving newtype (FromJSON, ToJSON, IsString)
+
+newtype MediaType = MediaType Text
+  deriving stock (Generic, Show, Eq, Ord)
+  deriving newtype (FromJSON, ToJSON, FromJSONKey, ToJSONKey, IsString)
 
 data OathFlowsObject = OauthFlowsObject
   { implicit :: Maybe ImplicitOauthFlowObject
@@ -666,13 +738,26 @@ data OathFlowsObject = OauthFlowsObject
     -- ^ Configuration for the OAuth Authorization Code flow. Previously called
     --   @accessCode@ in OpenAPI 2.0.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts OathFlowsObject
+
+data Discriminator = Discriminator
+  { propertyName :: Text
+  , mapping :: Maybe (Map Text (ReferenceOr SchemaObject))
+  }
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts Discriminator
 
 data SchemaObject = SchemaObject
   { title :: Maybe Text
     -- ^ The name of the schema
-  , type_ :: SchemaType
+  , type_ :: Maybe SchemaType
     -- ^ Value MUST be a string. Multiple types via an array are not supported.
+  , discriminator :: Maybe Discriminator
+    -- ^ Adds support for polymorphism. The discriminator is an object name that is
+    --   used to differentiate between other schemas which may satisfy the payload
+    --   description.
+    --   https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.3.md#discriminatorObject
   , multipleOf :: Maybe Int
     -- ^ When @type@ is integer, this defines valid values as a multiple
   , maximum :: Maybe Int
@@ -710,21 +795,21 @@ data SchemaObject = SchemaObject
   , enum :: Maybe [Text]
     -- ^ When @type@ is string, this defines the possible values the string may
     --   take
-  , allOf :: Maybe [SchemaOrReference]
+  , allOf :: Maybe [ReferenceOr SchemaObject]
     -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
-  , oneOf :: Maybe [SchemaOrReference]
+  , oneOf :: Maybe [ReferenceOr SchemaObject]
     -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
-  , anyOf :: Maybe [SchemaOrReference]
+  , anyOf :: Maybe [ReferenceOr SchemaObject]
     -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
-  , not :: Maybe [SchemaOrReference]
+  , not :: Maybe [ReferenceOr SchemaObject]
     -- ^ Inline or referenced schema MUST be of a Schema Object and not a standard JSON Schema.
-  , items :: Maybe SchemaOrReference
+  , items :: Maybe (ReferenceOr SchemaObject)
     -- ^ Value MUST be an object and not an array. Inline or referenced schema
     --   MUST be of a Schema Object and not a standard JSON Schema. items MUST be
     --   present if the type is array.
   , properties :: Maybe Properties
     -- ^ Property definitions MUST be a Schema Object and not a standard JSON Schema (inline or referenced).
-  , additionalProperties :: Maybe (Either Bool SchemaOrReference)
+  , additionalProperties :: Maybe (Either Bool (ReferenceOr SchemaObject))
     -- ^ When @type_ == "object" 'additionalProperties' can be set to:
     --
     --    - Bool
@@ -749,7 +834,46 @@ data SchemaObject = SchemaObject
     --   defined at the same level. For example, if type is string, then default
     --   can be "foo" but cannot be 1.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts SchemaObject
+
+blank :: SchemaObject
+blank = SchemaObject
+  { title = Nothing
+  , type_ = Nothing
+  , discriminator = Nothing
+  , multipleOf = Nothing
+  , maximum = Nothing
+  , exclusiveMaximum = Nothing
+  , minimum = Nothing
+  , exclusiveMinimum = Nothing
+  , maxLength = Nothing
+  , minLength = Nothing
+  , pattern = Nothing
+  , maxItems = Nothing
+  , minItems = Nothing
+  , uniqueItems = Nothing
+  , maxProperties = Nothing
+  , minProperties = Nothing
+  , required = Nothing
+  , enum = Nothing
+  , allOf = Nothing
+  , oneOf = Nothing
+  , anyOf = Nothing
+  , not = Nothing
+  , items = Nothing
+  , properties = Nothing
+  , additionalProperties = Nothing
+  , description = Nothing
+  , format = Nothing
+  , default_ = Nothing
+  }
+
+blankSchema :: SchemaType -> SchemaObject
+blankSchema ty = blank {type_ = Just ty}
+
+blankObjectSchema :: SchemaObject
+blankObjectSchema = blankSchema Object
 
 data SchemaType
   = Number
@@ -759,18 +883,16 @@ data SchemaType
   | Array
   | Boolean
   | Null
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded LowercaseEnum SchemaType
 
-newtype Properties = Properties { unProperties :: Map Text SchemaOrReference }
-  deriving stock (Generic)
+newtype Properties = Properties { unProperties :: Map Text (ReferenceOr SchemaObject) }
+  deriving stock (Generic, Show, Eq)
+  deriving newtype (FromJSON, ToJSON)
 
-data SchemaOrReference
-  = PropertyReferenceObject ReferenceObject
-  | PropertySchemaObject SchemaObject
-  deriving stock (Generic)
-
+-- | In practice this is where the actual schema is.
 data MediaTypeObject = MediaTypeObject
-  { schema :: Maybe SchemaOrReference
+  { schema :: Maybe (ReferenceOr SchemaObject)
     -- ^ The schema defining the content of the request, response, or
     --   parameter.
   , example :: Maybe Aeson.Value
@@ -779,8 +901,10 @@ data MediaTypeObject = MediaTypeObject
     --   exclusive of the examples field. Furthermore, if referencing a schema
     --   which contains an example, the example value SHALL override the example
     --   provided by the schema.
-  , examples :: [ReferenceOr ExampleObject]
-    -- ^ Examples of the media type. Each example object SHOULD match the media
+  , examples :: Maybe (Map Text (ReferenceOr ExampleObject))
+    -- ^ NOTE: What the key is supposed to mean in this map is unclear. A name?
+    --
+    --   Examples of the media type. Each example object SHOULD match the media
     --   type and specified schema if present. The examples field is mutually
     --   exclusive of the example field. Furthermore, if referencing a schema
     --   which contains an example, the examples value SHALL override the example
@@ -791,7 +915,8 @@ data MediaTypeObject = MediaTypeObject
     --   encoding object SHALL only apply to requestBody objects when the media
     --   type is multipart or application/x-www-form-urlencoded.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts MediaTypeObject
 
 -- | A single encoding definition applied to a single schema property
 data EncodingObject = EncodingObject
@@ -828,9 +953,15 @@ data EncodingObject = EncodingObject
     --   SHALL be ignored if the request body media type is not
     --   application/x-www-form-urlencoded.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts EncodingObject
 
--- | A container for the expected responses of an operation. The container maps
+-- | Fields are either response codes as a number-in-string or "default". At least one status code
+--   key is required.
+--
+--   Official description:
+--
+--   A container for the expected responses of an operation. The container maps
 --   a HTTP response code to the expected response.
 --
 --   The documentation is not necessarily expected to cover all possible HTTP
@@ -843,28 +974,9 @@ data EncodingObject = EncodingObject
 --
 --  The Responses Object MUST contain at least one response code, and it SHOULD
 --  be the response for a successful operation call.
-data ResponsesObject = ResponsesObject
-  { httpDefault :: Maybe (Either ResponseObject ReferenceObject)
-    -- ^ The documentation of responses other than the ones declared for specific
-    --   HTTP response codes. Use this field to cover undeclared responses. A
-    --   Reference Object can link to a response that the OpenAPI Object's
-    --   components/responses section defines.
-  , httpStatuses :: Maybe (Map Text (Either ResponseObject ReferenceObject))
-    -- ^ A map of HTTP status codes to their expected response
-    --
-    --   Any HTTP status code can be used as the property name, but only one
-    --   property per code, to describe the expected response for that HTTP
-    --   status code. A Reference Object can link to a response that is defined
-    --   in the OpenAPI Object's components/responses section. This field MUST be
-    --   enclosed in quotation marks (for example, "200") for compatibility
-    --   between JSON and YAML. To define a range of response codes, this field
-    --   MAY contain the uppercase wildcard character X. For example, 2XX
-    --   represents all response codes between [200-299]. Only the following
-    --   range definitions are allowed: 1XX, 2XX, 3XX, 4XX, and 5XX. If a
-    --   response is defined using an explicit code, the explicit code definition
-    --   takes precedence over the range definition for that code.
-  }
-  deriving stock (Generic)
+newtype ResponsesObject = ResponsesObject {unResponsesObject :: Map Text (ReferenceOr ResponseObject)}
+  deriving stock (Generic, Show, Eq)
+  deriving newtype (FromJSON, ToJSON)
 
 -- | Configuration details for a supported OAuth Flow
 data ImplicitOauthFlowObject = ImplicitOauthFlowObject
@@ -872,7 +984,8 @@ data ImplicitOauthFlowObject = ImplicitOauthFlowObject
   , refreshUrl :: Maybe Text
   , scopes :: Map Text Text
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ImplicitOauthFlowObject
 
 -- | Configuration details for a supported OAuth Flow
 data PasswordOauthFlowObject = PasswordOauthFlowObject
@@ -880,7 +993,8 @@ data PasswordOauthFlowObject = PasswordOauthFlowObject
   , refreshUrl :: Maybe Text
   , scopes :: Map Text Text
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts PasswordOauthFlowObject
 
 -- | Configuration details for a supported OAuth Flow
 data ClientCredentialsOauthFlowObject = ClientCredentialsOauthFlowObject
@@ -888,7 +1002,8 @@ data ClientCredentialsOauthFlowObject = ClientCredentialsOauthFlowObject
   , refreshUrl :: Maybe Text
   , scopes :: Map Text Text
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts ClientCredentialsOauthFlowObject
 
 -- | Configuration details for a supported OAuth Flow
 data AuthorizationCodeOauthFlowObject = AuthorizationCodeOauthFlowObject
@@ -897,7 +1012,8 @@ data AuthorizationCodeOauthFlowObject = AuthorizationCodeOauthFlowObject
   , refreshUrl :: Maybe Text
   , scopes :: Map Text Text
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts AuthorizationCodeOauthFlowObject
 
 -- | A map of possible out-of band callbacks related to the parent operation.
 --   Each value in the map is a Path Item Object that describes a set of requests
@@ -905,7 +1021,8 @@ data AuthorizationCodeOauthFlowObject = AuthorizationCodeOauthFlowObject
 --   key value used to identify the path item object is an expression, evaluated
 --   at runtime, that identifies a URL to use for the callback operation.
 newtype CallbackObject = CallbackObject (Map Text PathItemObject)
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving newtype (FromJSON, ToJSON)
 
 -- | The Link object represents a possible design-time link for a response. The
 --   presence of a link does not guarantee the caller's ability to successfully
@@ -945,7 +1062,8 @@ data LinkObject = LinkObject
   , server :: Maybe ServerObject
     -- ^ A server object to be used by the target operation.
   }
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving (FromJSON, ToJSON) via GenericEncoded PackageOpts LinkObject
 
 -- | Runtime expressions allow defining values based on information that will
 --   only be available within the HTTP message in an actual API call. This
@@ -970,4 +1088,5 @@ data LinkObject = LinkObject
 --     "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
 -- @
 newtype Expression = Expression Text
-  deriving stock (Generic)
+  deriving stock (Generic, Show, Eq)
+  deriving newtype (FromJSON, ToJSON)
